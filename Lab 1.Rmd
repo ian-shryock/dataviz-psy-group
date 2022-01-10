@@ -1,0 +1,12 @@
+---
+title: "Lab 1"
+author: "Ian Shryock"
+date: "1/10/2022"
+output: html_document
+---
+
+
+```{r}
+
+```
+
