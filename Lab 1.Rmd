@@ -12,6 +12,7 @@ library(rio)
 library(ggplot2)
 library(stringr)
 library(tidyverse)
+library(tidytext)
 ```
 
 ```{r loadData}
@@ -53,6 +54,46 @@ table <- table(grepl("text", tweetsData$text))
 ```
 
 ```{r part3}
+#unnest words
+tidy_tweets <- tweetsData %>% 
+  unnest_tokens(word, text)
+
+#bad count
+tidy_tweets %>% 
+  count(word, sort = TRUE)
+
+#get rid of common but irrelevant words
+tidy_tweets_sub <-tidy_tweets[!(tidy_tweets$word %in% c("t.co", "https", "http", "rt", "rstats")), ]
+
+# get rid of more irrelevant words and take 15 most common
+top_15 <- tidy_tweets_sub %>% 
+  anti_join(stop_words) %>% 
+  count(word, sort = TRUE) %>% 
+  head(., 15)
+
+#three puke version
+top_15 %>% 
+  ggplot(.,aes(word, n))+
+  geom_col()
+
+#two puke version
+top_15 %>% 
+  ggplot(.,aes(word, n))+
+  geom_col()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 10))
+
+#one puke version
+top_15 %>% 
+  ggplot(.,aes(word, n))+
+  geom_col()+
+  coord_flip()
+
+#sneaky face version
+top_15 %>% 
+  ggplot(.,aes(fct_reorder(word, n), n))+
+  geom_col()+
+  coord_flip() +
+  labs(x = "Word")
 
 ```
 
