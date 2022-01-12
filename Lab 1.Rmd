@@ -6,7 +6,57 @@ output: html_document
 ---
 
 
-```{r}
+```{r setup}
+library(here)
+library(rio)
+library(ggplot2)
+library(stringr)
+library(tidyverse)
+```
+
+```{r loadData}
+tweetsData <- readRDS(here("rstats_tweets.rds"))
+```
+
+```{r part1}
+ggplot(tweetsData, aes(x = display_text_width)) +
+  geom_histogram(fill = "#56B4E9",
+                 color = "white",
+                 alpha = 0.9,
+                 bins = 10)
+
+ggplot(tweetsData, aes(x = display_text_width)) +
+  geom_histogram(fill = "#56B4E9",
+                 color = "white",
+                 alpha = 0.9,
+                 bins = 20)
+
+ggplot(tweetsData, aes(x = display_text_width)) +
+  geom_histogram(fill = "#56B4E9",
+                 color = "white",
+                 alpha = 0.9,
+                 bins = 50)
+
+ggplot(tweetsData, aes(x = display_text_width)) +
+  geom_histogram(fill = "#56B4E9",
+                 color = "white",
+                 alpha = 0.9,
+                 bins = 100)
+
+#I don't know what we would use these insights for. The 10 bin shows the central tendencies. 20 bins makes the general pattern clear. 50 bins shows the modal response spike. 100 is incrementally more granular than 50. Overall, my inclination would be for 20 or 50, leaning slightly to 50.
+```
+
+```{r part2}
+table <- table(grepl("text", tweetsData$text))
+
+# The proportion is 4597 of 429513
+```
+
+```{r part3}
+
+```
+
+```{r part4}
 
 ```
 
