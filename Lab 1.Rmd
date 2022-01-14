@@ -98,6 +98,22 @@ top_15 %>%
 ```
 
 ```{r part4}
-
+# style plot
+top_15 %>% 
+  ggplot(.,aes(fct_reorder(word, n), n))+
+  geom_col(fill = "cornflowerblue", alpha = .9)+
+  coord_flip() +
+  labs(
+    title = "Word frequencies in posts",
+    subtitle = "Top 15 words displayed",
+    caption = "Data from Mike Kearny, distributed via #tidytuesday",
+    x = "Word", 
+    y="Count"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(plot.title.position = "plot",
+        panel.grid.major.y = element_blank(),
+        panel.grid.major.x = element_line(color = "#A9A9A9", size = .6),
+        panel.grid.minor.x = element_blank())
 ```
 
