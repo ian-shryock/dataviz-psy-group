@@ -1,0 +1,23 @@
+---
+title: "proposal_explorations"
+author: "Ian Shryock"
+date: "1/19/2022"
+output: html_document
+---
+
+```{r}
+library(tidyverse)
+library(edld652)
+library(stringr)
+
+datasets <- data.frame(names = list_datasets())
+fiscal_names <- datasets %>% filter(str_detect(names, "CCD_fiscal"))
+
+dis_dat <- get_data("NCES_CCD_nonfiscal_district_2017_2021_disabilities")
+
+#fisc_dat <-  lapply(fiscal_names, get_data) # apparently not all of the fiscal datasets have the same number of variables...
+#fisc_dat2 <- do.call(rbind, fisc_2)
+
+fisc_2017 <- get_data("NCES_CCD_fiscal_district_2017") # 2017 should be a good proxy for what we care about
+```
+
