@@ -18,6 +18,71 @@ dis_dat <- get_data("NCES_CCD_nonfiscal_district_2017_2021_disabilities")
 #fisc_dat <-  lapply(fiscal_names, get_data) # apparently not all of the fiscal datasets have the same number of variables...
 #fisc_dat2 <- do.call(rbind, fisc_2)
 
-fisc_2017 <- get_data("NCES_CCD_fiscal_district_2017") # 2017 should be a good proxy for what we care about
+raw_fisc_2017 <- get_data("NCES_CCD_fiscal_district_2017") # 2017 should be a good proxy for what we care about
+
+get_documentation("NCES_CCD_fiscal_district_2017")
+
+state_info <- readr::read_csv("https://github.com/kjhealy/fips-codes/raw/master/state_fips_master.csv")
+```
+
+# Revenue By State
+```{r}
+
+raw_fiscal_17 <- raw_fisc_2017 %>% 
+  select(FIPST, LEAID, TOTALREV) %>% 
+  mutate(fips = as.numeric(FIPST))
+
+
+state_fiscal_17 <- full_join(raw_fiscal_17, state_info)
+
+
+state_fisc_sums <- state_fiscal_17 %>% 
+  group_by(state_name) %>% 
+  summarize(min_rev = min(TOTALREV), 
+            max_rev = max(TOTALREV), 
+            mean_rev = mean(TOTALREV), 
+            median_rev = median(TOTALREV))
+
+
+
+state_fisc_sums %>% 
+  ggplot(.,aes(fct_reorder(state_name, mean_rev), mean_rev))+
+  geom_col(fill = "cornflowerblue", alpha = .9)+
+  coord_flip() +
+  labs(
+    title = "Revenue by State",
+    x = "State", 
+    y="Revenue"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(plot.title.position = "plot",
+        panel.grid.major.y = element_blank(),
+        panel.grid.major.x = element_line(color = "#A9A9A9", size = .6),
+        panel.grid.minor.x = element_blank())  ## something appears to be going on with hawaii...
+```
+
+# Disabilities by State
+```{r}
+
+dis_state_sums <- dis_dat %>% 
+  group_by(STATENAME) %>% 
+  summarize(idea_tot = sum(IDEA_COUNT, na.rm = TRUE))
+
+
+dis_state_sums %>% 
+  ggplot(.,aes(fct_reorder(STATENAME, idea_tot), idea_tot))+
+  geom_col(fill = "cornflowerblue", alpha = .9)+
+  coord_flip() +
+  labs(
+    title = "Students with Disabilities by State",
+    x = "State", 
+    y="Students with Disabilities"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(plot.title.position = "plot",
+        panel.grid.major.y = element_blank(),
+        panel.grid.major.x = element_line(color = "#A9A9A9", size = .6),
+        panel.grid.minor.x = element_blank())  
+
 ```
 
