@@ -5,12 +5,24 @@ date: "1/19/2022"
 output: html_document
 ---
 
+```{r InitialSetup}
+remotes::install_github("datalorax/edld652")
+library(edld652)
+set_key("sv=2020-08-04&ss=bfqt&srt=sco&sp=rwdlacupitfx&se=2023-01-01T04:52:19Z&st=2021-12-08T20:52:19Z&spr=https&sig=Nmx6zt%2B1iAXDoI5CIgBRoPlsvOPuLlBPvK5uUsldPnw%3D", overwrite = TRUE)
+install.packages("usethis")
+usethis::edit_r_environ()
+list_datasets()
+
+unlink(file.path("~",".Renviron"))
+```
+
+
 ```{r}
 library(tidyverse)
 library(edld652)
 library(stringr)
 
-datasets <- data.frame(names = list_datasets())
+datasets <- data.frame(names = edld652::list_datasets())
 fiscal_names <- datasets %>% filter(str_detect(names, "CCD_fiscal"))
 
 dis_dat <- get_data("NCES_CCD_nonfiscal_district_2017_2021_disabilities")
