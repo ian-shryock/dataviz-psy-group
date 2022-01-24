@@ -1,0 +1,49 @@
+---
+title: "Lab 2"
+author: "Ian Shryock"
+date: "1/24/2022"
+output: html_document
+---
+```{r}
+
+library(fivethirtyeight)
+library(fivethirtyeightdata)
+library(viridis)
+library(hrbrthemes)
+
+google_trends <- google_trends
+tv_state <- tv_states
+
+
+
+```
+
+# With Google
+```{r}
+
+colnames(google_trends) <- gsub("hurricane_|_us", "", colnames(google_trends))
+
+google_trends_long <- google_trends %>% 
+  pivot_longer(., cols = -c("date"), names_to = "hurricane", values_to = "values" )
+
+
+google_trends_long %>% 
+  ggplot(., aes(x = date,  group = hurricane)) +
+  geom_density(adjust=1.5, alpha=.2) +
+    theme_ipsum()+
+   facet_wrap(~hurricane)
+
+
+google_trends_long %>% 
+  ggplot(., aes(x = date,  group = hurricane, y = values, color = hurricane )) +
+  geom_point(alpha=.45) +
+    theme_ipsum()
+
+
+
+google_trends_long %>% 
+  ggplot(., aes(x = date,  group = hurricane, y = values, color = hurricane )) +
+  geom_ribbon()+
+    theme_ipsum()
+```
+
