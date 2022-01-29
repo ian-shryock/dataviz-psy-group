@@ -1,4 +1,4 @@
----
+ins---
 title: "Lab 2"
 author: "Dillon Welindt, Futing Zou, Ian Shryock"
 date: "1/26/2022"
@@ -14,6 +14,61 @@ library(fivethirtyeight)
 library(fivethirtyeightdata)
 library(tidyverse)
 ```
+
+```{r part1}
+google_trends <- fivethirtyeight::google_trends
+
+
+hurricane <- c("hurricane_harvey_us", "hurricane_irma_us", "hurricane_maria_us", "hurricane_jose_us")
+date <- as.Date(c("2017-08-25", "2017-09-10", "2017-09-20", "N/A"))
+landfall <- data.frame(hurricane, date)
+
+google_trends <- google_trends %>% pivot_longer(`hurricane_harvey_us`: `hurricane_jose_us`,
+               names_to = "hurricane", 
+               values_to = "value")
+
+google_trends %>% ggplot(aes(date, value)) +
+  geom_line(aes(color = hurricane), size = 3) +
+  scale_color_brewer(palette = "Dark2")+
+  labs(title = "Share of Sentences by Hurricane Over Time",
+    x = "Date", 
+    y = "Share of sentences") +
+  theme(text = element_text(size = 25))
+
+google_trends %>% ggplot(aes(date, value)) +
+geom_ribbon(aes(ymin = 0, ymax = value, fill = hurricane), color="black")+
+  labs(title = "Share of Sentences by Hurricane Over Time",
+    x = "Date", 
+    y = "Share of sentences") +
+  theme(text = element_text(size = 25))
+
+
+google_trends %>% 
+  group_by(hurricane, date) %>% 
+  summarize(value = mean(value)) %>% 
+  ggplot(aes(date, hurricane)) +
+  geom_tile(aes(fill = value),
+            color = "white") +
+  coord_fixed() +
+  scico::scale_fill_scico(palette = "tokyo")+
+  labs(title = "Share of Sentences by Hurricane Over Time",
+    x = "Date", 
+    y = "Hurricane") +
+  theme(text = element_text(size = 25))
+
+
+google_trends %>% ggplot(aes(date, value)) +
+  geom_ribbon(aes(ymin = 0, ymax = value, fill = hurricane), color="black", size = 1)+
+  scale_color_brewer(palette = "Dark2")+
+  geom_vline(data = landfall, aes(xintercept = date), color = "black", linetype = "dashed", size = 1.5) +
+  labs(title = "Share of Sentences by Hurricane Over Time",
+    x = "Date", 
+    y = "Share of sentences") +
+  theme_minimal()+
+  theme(text = element_text(size = 25))
+```
+
+
 
 ### Part 2
 __Replicate the “National cable news networks” plot from the story using the tv_states data. Don’t worry about all the labels. Try to match the colors but don’t worry about getting them exact.__
