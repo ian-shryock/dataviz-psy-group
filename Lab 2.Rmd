@@ -1,0 +1,126 @@
+ins---
+title: "Lab 2"
+author: "Dillon Welindt, Futing Zou, Ian Shryock"
+date: "1/26/2022"
+output: html_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(message = FALSE,
+                      warning = FALSE,
+                      fig.width = 8,
+                      fig.height = 6)
+library(fivethirtyeight)
+library(fivethirtyeightdata)
+library(tidyverse)
+```
+
+```{r part1}
+google_trends <- fivethirtyeight::google_trends
+
+
+hurricane <- c("hurricane_harvey_us", "hurricane_irma_us", "hurricane_maria_us", "hurricane_jose_us")
+date <- as.Date(c("2017-08-25", "2017-09-10", "2017-09-20", "N/A"))
+landfall <- data.frame(hurricane, date)
+
+google_trends <- google_trends %>% pivot_longer(`hurricane_harvey_us`: `hurricane_jose_us`,
+               names_to = "hurricane", 
+               values_to = "value")
+
+google_trends %>% ggplot(aes(date, value)) +
+  geom_line(aes(color = hurricane), size = 3) +
+  scale_color_brewer(palette = "Dark2")+
+  labs(title = "Share of Sentences by Hurricane Over Time",
+    x = "Date", 
+    y = "Share of sentences") +
+  theme(text = element_text(size = 25))
+
+google_trends %>% ggplot(aes(date, value)) +
+geom_ribbon(aes(ymin = 0, ymax = value, fill = hurricane), color="black")+
+  labs(title = "Share of Sentences by Hurricane Over Time",
+    x = "Date", 
+    y = "Share of sentences") +
+  theme(text = element_text(size = 25))
+
+
+google_trends %>% 
+  group_by(hurricane, date) %>% 
+  summarize(value = mean(value)) %>% 
+  ggplot(aes(date, hurricane)) +
+  geom_tile(aes(fill = value),
+            color = "white") +
+  coord_fixed() +
+  scico::scale_fill_scico(palette = "tokyo")+
+  labs(title = "Share of Sentences by Hurricane Over Time",
+    x = "Date", 
+    y = "Hurricane") +
+  theme(text = element_text(size = 25))
+
+
+google_trends %>% ggplot(aes(date, value)) +
+  geom_ribbon(aes(ymin = 0, ymax = value, fill = hurricane), color="black", size = 1)+
+  scale_color_brewer(palette = "Dark2")+
+  geom_vline(data = landfall, aes(xintercept = date), color = "black", linetype = "dashed", size = 1.5) +
+  labs(title = "Share of Sentences by Hurricane Over Time",
+    x = "Date", 
+    y = "Share of sentences") +
+  theme_minimal()+
+  theme(text = element_text(size = 25))
+```
+
+
+
+### Part 2
+__Replicate the “National cable news networks” plot from the story using the tv_states data. Don’t worry about all the labels. Try to match the colors but don’t worry about getting them exact.__
+
+```{r part2}
+tv_long <- tv_states %>%
+  pivot_longer(`florida`: `puerto_rico`,
+               names_to = "state", 
+               values_to = "tv") %>%
+  mutate(state = factor(state, levels = c("florida", "texas", "puerto_rico")))
+
+library(lubridate)
+landfall <- tibble(name = c("Harvey\nlandfall", "Irma\nlandfall", "Maria\nlandfall", "Las Vegas\nshooting"),
+                   date = as.Date(ymd(c("20170825", "20170910", "20170920", "20171001"))))
+
+tv_long %>% 
+  ggplot(aes(x=date, y=tv, fill=state, color=state)) +
+  geom_ribbon(aes(ymin = 0, ymax = tv, fill = state), color="white") +
+  scale_fill_manual(values=c("texas" = "#ec713a", "florida" = "#fc5185", "puerto_rico" = "#3fc0c9")) +
+  labs(
+    title = "National cable news networks",
+    caption = c("Includes Bloomberg, CNBC, CNN, Fox Business, Fox News and MSNBC.\nFiveThirtyEight",
+                "SOURCES: MEDIA CLOUD, TV NEWS ARCHIVE"),
+    x = "", 
+    y = "Share of sentences",
+  ) +
+  scale_y_continuous(breaks = c(0,1,2,3),
+                     labels = c("0", "1", "2" , "3%")) +
+  scale_x_continuous(limits = c(as.Date("2017-08-12"), as.Date("2017-10-12")),
+                     breaks = c(as.Date(ymd(c("20170815", "20170901", "20170915", "20171001")))),
+                     labels = c("AUG.15,2017", "SEPT.1", "SEPT.15" , "OCT.1")) +
+  theme_minimal(base_size = 14)+
+  theme(plot.title.position = "plot",
+        plot.title = element_text(face = "bold",                 
+                                  hjust = .5),
+        axis.title.y = element_text(size = 12, face="bold", margin = margin(r = 15)),
+        axis.text = element_text(family = "mono", color = "#999899", size = 11),
+        plot.caption.position = "plot",
+        plot.caption = element_text(size = c(9, 6), color = "#999899", 
+                                    lineheight = 1.2, hjust=c(0, 1), vjust=c(.75, .5)),
+        legend.position = "none",
+        plot.margin = margin(t = 6, r = 6, b = 10, 6),
+        panel.grid.minor = element_blank(),
+        panel.grid.major.x = element_line(size = .5)) +
+  geom_hline(yintercept = 0) +
+  geom_vline(aes(xintercept = date), data = landfall,
+             linetype = "dotted", color = "#e3e1e1", size = .8) +
+  geom_label(aes(x=as.Date(ymd(c("20170825", "20170913", "20170920", "20171001"))), 
+                 y=c(3.2, 3.4, 2.5, 3), label=name, size=5), 
+             data = landfall, color="grey80", fontface="italic", label.size = NA, inherit.aes = FALSE) +
+  annotate("text", x = as.Date("2017-08-29"), y = 1, label = "Texas", size = 5, fontface = "bold") +
+  annotate("text", x = as.Date("2017-09-10"), y = 1.5, label = "Florida", size = 5, fontface = "bold") +
+  annotate("text", x = as.Date("2017-09-30"), y = 1.4, label = "Puerto Rico", size = 5, fontface = "bold")
+
+```
