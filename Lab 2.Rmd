@@ -124,3 +124,48 @@ tv_long %>%
   annotate("text", x = as.Date("2017-09-30"), y = 1.4, label = "Puerto Rico", size = 5, fontface = "bold")
 
 ```
+
+
+```{r}
+
+comic_characters <- comic_characters %>% 
+  mutate(sex = gsub(" Characters", "", sex))
+comic_characters$sex <- comic_characters$sex %>% replace_na("NA") 
+
+comic_characters$sex <- as.factor(comic_characters$sex) 
+
+# whoa no
+ggplot(comic_characters, aes(x="", y=sex, fill=sex)) +
+  geom_bar(stat="identity", width=1) +
+  coord_polar("y", start=0)
+
+#meh
+comic_characters %>% 
+  ggplot(aes(sex))+
+  geom_histogram(stat = "count")
+
+#yikes
+comic_characters %>% 
+  ggplot(aes(sex, group = publisher, fill = publisher))+
+  geom_histogram(stat = "count")
+
+#better, but visualizing less frequent genders is hard
+  ggplot(data = comic_characters, mapping = aes(x = sex, fill = publisher)) +
+    geom_bar(data = subset(comic_characters, publisher =="DC"))+
+    geom_bar(data = subset(comic_characters, publisher =="Marvel"), 
+             aes(y = ..count..*(-1)))+
+    scale_x_discrete(labels = levels(comic_characters$sex))+
+    xlab("Gender")+
+    ylab("Count")+
+    coord_flip()+
+    theme(text = element_text(size=12))+
+    scale_y_continuous(breaks=seq(-15000,7500,2500),
+                       labels=abs(seq(-15000,7500,2500))) + 
+    scale_fill_brewer(palette="Dark2")+
+    ggtitle("Comic book characters lack gender diversity")
+
+
+
+
+```
+
