@@ -33,14 +33,14 @@ google_trends %>% ggplot(aes(date, value)) +
   labs(title = "Share of Sentences by Hurricane Over Time",
     x = "Date", 
     y = "Share of sentences") +
-  theme(text = element_text(size = 25))
+  theme(text = element_text(size = 15))
 
 google_trends %>% ggplot(aes(date, value)) +
 geom_ribbon(aes(ymin = 0, ymax = value, fill = hurricane), color="black")+
   labs(title = "Share of Sentences by Hurricane Over Time",
     x = "Date", 
     y = "Share of sentences") +
-  theme(text = element_text(size = 25))
+  theme(text = element_text(size = 15))
 
 
 google_trends %>% 
@@ -54,7 +54,7 @@ google_trends %>%
   labs(title = "Share of Sentences by Hurricane Over Time",
     x = "Date", 
     y = "Hurricane") +
-  theme(text = element_text(size = 25))
+  theme(text = element_text(size = 15))
 
 
 google_trends %>% ggplot(aes(date, value)) +
@@ -65,7 +65,7 @@ google_trends %>% ggplot(aes(date, value)) +
     x = "Date", 
     y = "Share of sentences") +
   theme_minimal()+
-  theme(text = element_text(size = 25))
+  theme(text = element_text(size = 15))
 ```
 
 
