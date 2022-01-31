@@ -1,0 +1,16 @@
+---
+title: "Lab 3"
+author: "Dillon, Futing, and Ian"
+date: "1/31/2022"
+output: html_document
+---
+```{r}
+library(tidyverse)
+library(rio)
+library(here)
+
+
+honey <- import(here("honeyproduction.csv"))
+
+```
+
