@@ -8,9 +8,45 @@ output: html_document
 library(tidyverse)
 library(rio)
 library(here)
+library(colorblindr)
 
 
 honey <- import(here("honeyproduction.csv"))
 
 ```
+
+```{r Part1}
+honey2 <- honey
+state <- unique(honey2$state)
+colorFill <- c(rep("Loser State or Illinois", 44))
+stateColor <- as.data.frame(cbind(state, colorFill))
+stateColor[4,2] <- "California"
+stateColor[40,2] <- "Washington"
+stateColor[32,2] <- "Oregon"
+stateColor$colorFill <- factor(stateColor$colorFill, levels = c("California", "Oregon", "Washington", "Loser State or Illinois"))
+honey2 <- left_join(honey2, stateColor, by = 'state')
+
+honeyPlot <- ggplot(honey2, aes(x = totalprod, y = reorder(state, totalprod))) + 
+  geom_col(aes(fill=colorFill))+ 
+  scale_x_continuous(expand = c(0, 0)) +
+  labs(title = "Total honey production by state")
+honeyPlot
+```
+
+
+```{r Part2}
+colorblindr::cvd_grid(honeyPlot)
+```
+
+
+```{r Part3}
+ggplot(honey2, aes(x = totalprod, y = reorder(state, totalprod))) + 
+  geom_col(aes(fill=colorFill))+ 
+  scale_fill_OkabeIto()+
+  scale_x_continuous(expand = c(0, 0)) +
+  labs(title = "Total honey production by state")
+
+
+```
+
 
