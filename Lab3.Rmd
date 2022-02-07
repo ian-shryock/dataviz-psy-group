@@ -4,14 +4,43 @@ author: "Dillon, Futing, and Ian"
 date: "1/31/2022"
 output: html_document
 ---
-```{r}
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(message = FALSE,
+                      warning = FALSE)
 library(tidyverse)
 library(rio)
 library(here)
+library(janitor)
+library(gghighlight)
+library(colorBlindness)
+honey <- import(here("honeyproduction.csv")) %>% clean_names()
 library(colorblindr)
 
+#remotes::install_github("hrbrmstr/albersusa")
+library(albersusa)
+library(colorspace)
+```
 
-honey <- import(here("honeyproduction.csv"))
+
+```{r}
+
+honey <- honey %>% rename(state_code = state)
+census <- import(here("census.csv")) %>% clean_names()
+
+joined <- inner_join(census, honey, by = "state_code")
+
+ggplot(joined, aes(year, totalprod)) +
+    geom_point(color = "gray80") +
+    geom_point(data = filter(joined, str_detect(region, "West")),
+               aes(fill = state))+  
+  scale_fill_manual(values = rainbow(12)) 
+
+bad <- ggplot(joined, aes(year, totalprod, color = state)) +
+  geom_point()+
+    gghighlight(grepl("west", region))
+
+
+cvdPlot(bad)
 
 ```
 
@@ -50,3 +79,73 @@ ggplot(honey2, aes(x = totalprod, y = reorder(state, totalprod))) +
 ```
 
 
+
+# Part 4/5
+```{r}
+
+
+joined %>% 
+  group_by(state) %>% 
+  summarize(avg_honey = mean(totalprod, na.rm = TRUE), 
+            region = region) %>% 
+  ggplot(aes( x = reorder(state, desc(avg_honey)), y = avg_honey, fill = region)) +
+    geom_bar(stat = "identity")+
+  coord_flip()# I notice an agressive color palette
+ 
+
+
+
+
+joined %>% 
+  group_by(state) %>% 
+  summarize(avg_honey = mean(totalprod, na.rm = TRUE), 
+            region = unique(region)) %>% 
+  ggplot(aes( x = reorder(state, -desc(avg_honey)), y = avg_honey)) +
+    geom_col(aes(fill = region), alpha = .7)+
+  coord_flip() + 
+    scale_fill_brewer(palette="Spectral", name = "Region")+
+  labs(title = "Big States Make Honey")+
+  xlab("")+
+  theme_minimal()+
+  scale_y_continuous("Avg Honey (per million)", labels = c("", "10", "20", "30"))
+
+joined %>% 
+  group_by(region, year) %>% 
+  summarize(avg_honey = mean(totalprod, na.rm = TRUE)) %>% 
+  ggplot(aes(year, region))+
+  geom_tile(aes(fill = avg_honey))+
+  scale_fill_viridis_c(option = "magma", alpha = .9)+
+  labs(title = "Honey Yields in Decline", fill = "Average Honey")+
+  xlab ("Year")+
+  ylab("Region")+
+  theme_minimal()
+  
+  
+
+  
+```
+
+# Part 6
+```{r}
+us <- usa_sf()
+#ggplot(us) +
+#  geom_sf() +
+#  theme_minimal(base_size = 14)
+
+joined_us <- joined %>%
+  select("iso_3166_2"="state_code", totalprod, year)
+
+us_honey <- inner_join(us, joined_us)
+
+ggplot(us_honey) +
+  geom_sf(aes(fill=totalprod)) +
+  scale_fill_continuous_sequential(palette = "Heat") +  
+  facet_wrap(~year) +
+  labs(fill = "Total production",
+       title = "Honey production by state (1998-2012)") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title.position = "plot",
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 4))
+
+```
