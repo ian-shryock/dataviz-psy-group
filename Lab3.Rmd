@@ -83,9 +83,11 @@ ggplot(us_honey) +
   geom_sf(aes(fill=totalprod)) +
   scale_fill_continuous_sequential(palette = "Heat") +  
   facet_wrap(~year) +
-  labs(fill="Total production") +
-  theme_minimal(base_size = 14) +
-  theme(axis.text.y = element_text(size = 6),
+  labs(fill = "Total production",
+       title = "Honey production by state (1998-2012)") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title.position = "plot",
+        axis.text.y = element_text(size = 6),
         axis.text.x = element_text(size = 4))
 
 ```
