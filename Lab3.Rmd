@@ -15,7 +15,7 @@ library(gghighlight)
 library(colorBlindness)
 honey <- import(here("honeyproduction.csv")) %>% clean_names()
 
-remotes::install_github("hrbrmstr/albersusa")
+#remotes::install_github("hrbrmstr/albersusa")
 library(albersusa)
 library(colorspace)
 ```
