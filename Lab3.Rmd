@@ -18,7 +18,9 @@ library(colorblindr)
 
 #remotes::install_github("hrbrmstr/albersusa")
 library(albersusa)
+library(dplyr)
 library(colorspace)
+library(ggplot2)
 ```
 
 
@@ -44,18 +46,21 @@ cvdPlot(bad)
 
 ```
 
+We had a mix-up, looks like we did pts 1-3 twice
+
 ```{r Part1}
 honey2 <- honey
-state <- unique(honey2$state)
-colorFill <- c(rep("Loser State or Illinois", 44))
-stateColor <- as.data.frame(cbind(state, colorFill))
+state_code <- unique(honey2$state)
+colorFill <- c(rep("Blah State or Illinois", 44))
+stateColor <- as.data.frame(cbind(state_code, colorFill))
 stateColor[4,2] <- "California"
 stateColor[40,2] <- "Washington"
 stateColor[32,2] <- "Oregon"
-stateColor$colorFill <- factor(stateColor$colorFill, levels = c("California", "Oregon", "Washington", "Loser State or Illinois"))
-honey2 <- left_join(honey2, stateColor, by = 'state')
+stateColor$colorFill <- factor(stateColor$colorFill, levels = c("California", "Oregon", "Washington", "Blah State or Illinois"))
 
-honeyPlot <- ggplot(honey2, aes(x = totalprod, y = reorder(state, totalprod))) + 
+honey2 <- left_join(honey2, stateColor, by = 'state_code')
+
+honeyPlot <- ggplot(honey2, aes(x = totalprod, y = reorder(state_code, totalprod))) + 
   geom_col(aes(fill=colorFill))+ 
   scale_x_continuous(expand = c(0, 0)) +
   labs(title = "Total honey production by state")
@@ -69,7 +74,7 @@ colorblindr::cvd_grid(honeyPlot)
 
 
 ```{r Part3}
-ggplot(honey2, aes(x = totalprod, y = reorder(state, totalprod))) + 
+ggplot(honey2, aes(x = totalprod, y = reorder(state_code, totalprod))) + 
   geom_col(aes(fill=colorFill))+ 
   scale_fill_OkabeIto()+
   scale_x_continuous(expand = c(0, 0)) +
