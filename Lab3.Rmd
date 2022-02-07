@@ -11,20 +11,42 @@ library(tidyverse)
 library(rio)
 library(here)
 library(janitor)
+library(gghighlight)
+library(colorBlindness)
 honey <- import(here("honeyproduction.csv")) %>% clean_names()
 
-#remotes::install_github("hrbrmstr/albersusa")
+remotes::install_github("hrbrmstr/albersusa")
 library(albersusa)
 library(colorspace)
 ```
 
 
-# Part 4/5
 ```{r}
+
 honey <- honey %>% rename(state_code = state)
 census <- import(here("census.csv")) %>% clean_names()
 
 joined <- inner_join(census, honey, by = "state_code")
+
+ggplot(joined, aes(year, totalprod)) +
+    geom_point(color = "gray80") +
+    geom_point(data = filter(joined, str_detect(region, "West")),
+               aes(fill = state))+  
+  scale_fill_manual(values = rainbow(12)) 
+
+bad <- ggplot(joined, aes(year, totalprod, color = state)) +
+  geom_point()+
+    gghighlight(grepl("west", region))
+
+
+cvdPlot(bad)
+
+```
+
+
+# Part 4/5
+```{r}
+
 
 joined %>% 
   group_by(state) %>% 
