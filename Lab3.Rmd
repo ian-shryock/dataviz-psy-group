@@ -4,14 +4,18 @@ author: "Dillon, Futing, and Ian"
 date: "1/31/2022"
 output: html_document
 ---
-```{r}
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(message = FALSE,
+                      warning = FALSE)
 library(tidyverse)
 library(rio)
 library(here)
 library(janitor)
 honey <- import(here("honeyproduction.csv")) %>% clean_names()
 
-
+#remotes::install_github("hrbrmstr/albersusa")
+library(albersusa)
+library(colorspace)
 ```
 
 
@@ -63,3 +67,25 @@ joined %>%
   
 ```
 
+# Part 6
+```{r}
+us <- usa_sf()
+#ggplot(us) +
+#  geom_sf() +
+#  theme_minimal(base_size = 14)
+
+joined_us <- joined %>%
+  select("iso_3166_2"="state_code", totalprod, year)
+
+us_honey <- inner_join(us, joined_us)
+
+ggplot(us_honey) +
+  geom_sf(aes(fill=totalprod)) +
+  scale_fill_continuous_sequential(palette = "Heat") +  
+  facet_wrap(~year) +
+  labs(fill="Total production") +
+  theme_minimal(base_size = 14) +
+  theme(axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 4))
+
+```
