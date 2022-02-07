@@ -8,9 +8,58 @@ output: html_document
 library(tidyverse)
 library(rio)
 library(here)
+library(janitor)
+honey <- import(here("honeyproduction.csv")) %>% clean_names()
 
 
-honey <- import(here("honeyproduction.csv"))
+```
 
+
+# Part 4/5
+```{r}
+honey <- honey %>% rename(state_code = state)
+census <- import(here("census.csv")) %>% clean_names()
+
+joined <- inner_join(census, honey, by = "state_code")
+
+joined %>% 
+  group_by(state) %>% 
+  summarize(avg_honey = mean(totalprod, na.rm = TRUE), 
+            region = region) %>% 
+  ggplot(aes( x = reorder(state, desc(avg_honey)), y = avg_honey, fill = region)) +
+    geom_bar(stat = "identity")+
+  coord_flip()# I notice an agressive color palette
+ 
+
+
+
+
+joined %>% 
+  group_by(state) %>% 
+  summarize(avg_honey = mean(totalprod, na.rm = TRUE), 
+            region = unique(region)) %>% 
+  ggplot(aes( x = reorder(state, -desc(avg_honey)), y = avg_honey)) +
+    geom_col(aes(fill = region), alpha = .7)+
+  coord_flip() + 
+    scale_fill_brewer(palette="Spectral", name = "Region")+
+  labs(title = "Big States Make Honey")+
+  xlab("")+
+  theme_minimal()+
+  scale_y_continuous("Avg Honey (per million)", labels = c("", "10", "20", "30"))
+
+joined %>% 
+  group_by(region, year) %>% 
+  summarize(avg_honey = mean(totalprod, na.rm = TRUE)) %>% 
+  ggplot(aes(year, region))+
+  geom_tile(aes(fill = avg_honey))+
+  scale_fill_viridis_c(option = "magma", alpha = .9)+
+  labs(title = "Honey Yields in Decline", fill = "Average Honey")+
+  xlab ("Year")+
+  ylab("Region")+
+  theme_minimal()
+  
+  
+
+  
 ```
 
