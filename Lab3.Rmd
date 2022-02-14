@@ -41,7 +41,7 @@ bad <- ggplot(joined, aes(year, totalprod, color = state)) +
   geom_point()+
     gghighlight(grepl("west", region))
 
-
+bad
 cvdPlot(bad)
 
 ```
