@@ -1,0 +1,88 @@
+---
+title: "proposal_explorations"
+author: "Ian, Dillon, Futing"
+date: "1/19/2022"
+output: html_document
+---
+
+```{r InitialSetup}
+#remotes::install_github("datalorax/edld652")
+library(edld652)
+
+set_key("sv=2020-08-04&ss=bfqt&srt=sco&sp=rwdlacupitfx&se=2023-01-01T04:52:19Z&st=2021-12-08T20:52:19Z&spr=https&sig=Nmx6zt%2B1iAXDoI5CIgBRoPlsvOPuLlBPvK5uUsldPnw%3D", overwrite = TRUE)
+#install.packages("usethis")
+usethis::edit_r_environ()
+list_datasets()
+
+unlink(file.path("~",".Renviron"))
+```
+
+
+```{r}
+library(tidyverse)
+library(edld652)
+library(stringr)
+library(here)
+
+datasets <- data.frame(names = edld652::list_datasets())
+#fiscal_names <- datasets %>% filter(str_detect(names, "CCD_fiscal"))
+
+dis_dat <- get_data("NCES_CCD_nonfiscal_district_2017_2021_disabilities")
+
+#fisc_dat <-  lapply(fiscal_names, get_data) # apparently not all of the fiscal datasets have the same number of variables...
+#fisc_dat2 <- do.call(rbind, fisc_2)
+
+raw_fisc_2017 <- get_data("NCES_CCD_fiscal_district_2017") 
+raw_fisc_2018 <- get_data("NCES_CCD_fiscal_district_2018") %>% 
+  select(-CE3, -FL_CE3)
+
+fiscal <- rbind(raw_fisc_2017, raw_fisc_2018)
+
+#doc <- get_documentation("NCES_CCD_fiscal_district_2017")
+
+state_info <- readr::read_csv("https://github.com/kjhealy/fips-codes/raw/master/state_fips_master.csv")
+```
+
+# Merge Fiscal and Disability Data
+```{r}
+fiscal_sub <- fiscal %>% 
+  select(FIPST, LEAID, TOTALREV, sped_rev_st = C05, idea_rev_fed = C15, 
+         sped_salary = Z36, YEAR) %>% 
+  mutate(fips = as.numeric(FIPST)) %>% 
+  janitor::clean_names()
+
+state_fiscal <- full_join(fiscal_sub, state_info)
+
+dis_dat_sub <- dis_dat %>% 
+  select(state_name = STATENAME, LEAID, LEA_NAME, YEAR, IDEA_COUNT) %>% 
+  janitor::clean_names()
+dis_dat_sub$state_name <- str_to_title(dis_dat_sub$state_name)
+
+##taking only districts with complete data
+fiscal_disability <- inner_join(dis_dat_sub, state_fiscal)
+```
+
+# Summaries?
+```{r}
+state_fisc_sums <- fiscal_disability %>% 
+  group_by(state_name) %>% 
+  summarize(min_idea_rev_fed = min(idea_rev_fed), 
+            max_idea_rev_fed = max(idea_rev_fed), 
+            mean_idea_rev_fed = mean(idea_rev_fed), 
+            median_idea_rev_fed = median(idea_rev_fed), 
+            min_sped_rev_st = min(sped_rev_st), 
+            max_sped_rev_st = max(sped_rev_st), 
+            mean_sped_rev_st = mean(sped_rev_st), 
+            median_sped_rev_st = median(sped_rev_st) 
+            ) 
+
+
+dis_state_sums <- fiscal_disability %>% 
+  group_by(state_name ) %>% 
+  summarize(idea_tot = sum(idea_count, na.rm = TRUE)) 
+
+
+
+
+```
+
