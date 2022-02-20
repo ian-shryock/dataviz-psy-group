@@ -195,8 +195,8 @@ fiscal_acgr1 <- fiscal_acgr1 %>% mutate(numTotalGradRate=recode(ALL_RATE,
                                         "GE95"= 97.5,
                                         "20-29"= 24.5,
                                         "30-34"= 32))
-#fiscal_acgr1 <- fiscal_acgr1 %>% filter(!is.na(numTotalGradRate))
-#fiscal_acgr1 <- fiscal_acgr1 %>% filter(!is.na(numCWDGradRate))
+fiscal_acgr1 <- fiscal_acgr1 %>% filter(!is.na(numTotalGradRate))
+fiscal_acgr1 <- fiscal_acgr1 %>% filter(!is.na(numCWDGradRate))
 fiscal_acgr1 <- fiscal_acgr1 %>% mutate(CWD_GRAD_COHORT= numCWDGradRate*CWD_COHORT*.01, NONCWD_GRAD_COHORT= (numTotalGradRate*ALL_COHORT*.01)-(numCWDGradRate*CWD_COHORT*.01))
 
 stateLevel <- fiscal_acgr1 %>% group_by(STNAME) %>% summarize(CWD_COHORT=mean(CWD_COHORT, na.rm=TRUE), ALL_COHORT=mean(ALL_COHORT), SpedRev=mean(C05+C15, na.rm=TRUE), NONCWD_GRAD_COHORT=mean(NONCWD_GRAD_COHORT), CWD_GRAD_COHORT=mean(CWD_GRAD_COHORT)) %>% mutate(CWD_RATE=CWD_COHORT/ALL_COHORT) %>% mutate(nonCWD=ALL_COHORT-CWD_COHORT) %>% mutate(SpedPerStudent=SpedRev/CWD_COHORT, CWD_GRAD_RATE = CWD_GRAD_COHORT/CWD_COHORT, NON_CWD_GRAD_RATE=NONCWD_GRAD_COHORT/(ALL_COHORT-CWD_COHORT))
