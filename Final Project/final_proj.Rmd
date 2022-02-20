@@ -20,17 +20,30 @@ unlink(file.path("~",".Renviron"))
 
 ```{r}
 library(tidyverse)
-library(edld652)
 library(stringr)
 library(here)
+library(rio)
+#library(rgdal)
+library(edbuildmapr)
 
 datasets <- data.frame(names = edld652::list_datasets())
 #fiscal_names <- datasets %>% filter(str_detect(names, "CCD_fiscal"))
 
 dis_dat <- get_data("NCES_CCD_nonfiscal_district_2017_2021_disabilities")
+#charac <- get_data("NCES_CCD_nonfiscal_school_2017_2021_directory")
+acgr <- get_data("EDFacts_acgr_lea_2011_2019")
+sch <- get_data("EDFacts_acgr_sch_2011_2019")
 
 #fisc_dat <-  lapply(fiscal_names, get_data) # apparently not all of the fiscal datasets have the same number of variables...
 #fisc_dat2 <- do.call(rbind, fisc_2)
+
+#shapedata 2017
+sd17 <- sd_shapepull(data_year = "2017", with_data = TRUE)
+sd17$year <- as.numeric(sd17$year)
+sd17$leaid <- sd17$GEOID
+#failed attempts at getting the shp data for maps
+#location <- readOGR(here("location_data/Shapefiles_SCH", "EDGE_GEOCODE_PUBLICSCH_2021.shp"))
+#shape <- st_read(system.file( "location_data/Shapefiles_SCH/EDGE_GEOCODE_PUBLICSCH_2021.shp", package = "sf"), dsn = #"location_data/Shapefiles_SCH/EDGE_GEOCODE_PUBLICSCH_2021.shp")
 
 raw_fisc_2017 <- get_data("NCES_CCD_fiscal_district_2017") 
 raw_fisc_2018 <- get_data("NCES_CCD_fiscal_district_2018") %>% 
@@ -39,6 +52,7 @@ raw_fisc_2018 <- get_data("NCES_CCD_fiscal_district_2018") %>%
 fiscal <- rbind(raw_fisc_2017, raw_fisc_2018)
 
 #doc <- get_documentation("NCES_CCD_fiscal_district_2017")
+#doc <- get_documentation("EDFacts_acgr_lea_2011_2019")
 
 state_info <- readr::read_csv("https://github.com/kjhealy/fips-codes/raw/master/state_fips_master.csv")
 ```
@@ -54,12 +68,32 @@ fiscal_sub <- fiscal %>%
 state_fiscal <- full_join(fiscal_sub, state_info)
 
 dis_dat_sub <- dis_dat %>% 
-  select(state_name = STATENAME, LEAID, LEA_NAME, YEAR, IDEA_COUNT) %>% 
+  select(state_name = STATENAME, LEAID, LEA_NAME, YEAR , IDEA_COUNT) %>% 
   janitor::clean_names()
 dis_dat_sub$state_name <- str_to_title(dis_dat_sub$state_name)
 
 ##taking only districts with complete data
 fiscal_disability <- inner_join(dis_dat_sub, state_fiscal)
+
+
+mapable <- inner_join(fiscal_disability, sd17)
+```
+
+# Basic Maps
+```{r}
+
+ore <- mapable %>% 
+  filter(state_name=="Oregon") %>% 
+  select(idea_count, idea_rev_fed, geometry)  
+plot(ore, border = "light gray", lwd = 0.5) # ????
+
+
+## from vignette: http://viz.edbuild.org/workshops/edbuildr/
+ct <- sd17 %>% 
+  filter(State == "Connecticut") %>% 
+  select(urb, StPovRate, LRPP) 
+
+plot(ct, border="light gray", lwd=0.5)
 ```
 
 # Summaries?
