@@ -262,4 +262,54 @@ stateLevel%>%
   )
 ```
 
+```{r}
+library(albersusa)
+library(colorspace)
+us <- usa_sf()
+
+stateLevel_subset <- stateLevel %>%
+  select("name"="STNAME", CWD_RATE, SpedPerStudent,CWD_GRAD_RATE,NON_CWD_GRAD_RATE)
+
+stateLevel_geo <- inner_join(us, stateLevel_subset) 
+
+ggplot(stateLevel_geo) +
+  geom_sf(aes(fill=CWD_RATE)) +
+  scale_fill_continuous_sequential(palette = "Heat") + 
+  labs(fill = "Percent of Students with Disabilities",
+       title = "Students with Disability Rates by State") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title.position = "plot",
+        legend.position = "bottom",
+        legend.key.size = unit(1, 'cm'),
+        legend.key.height = unit(.5,"cm"),
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6))
+
+ggplot(stateLevel_geo) +
+  geom_sf(aes(fill=SpedPerStudent)) +
+  scale_fill_continuous_sequential(palette = "Heat") + 
+  labs(fill = "Avg Special Ed Revenue per Student",
+       title = "SpEd Revenue per Student by State") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title.position = "plot",
+        legend.position = "bottom",
+        legend.key.size = unit(1.2, 'cm'),
+        legend.key.height = unit(.5,"cm"),
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6))
+
+ggplot(stateLevel_geo) +
+  geom_sf(aes(fill=CWD_GRAD_RATE-NON_CWD_GRAD_RATE)) +
+  scale_fill_continuous_sequential(palette = "Heat") + 
+  labs(fill = "Differences in Grad Rates\n(Disability - No Disabilties)",
+       title = "Differences in CWD/Non-CWD Grad Rates by State") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title.position = "plot",
+        legend.position = "bottom",
+        legend.key.size = unit(1.2, 'cm'),
+        legend.key.height = unit(.5,"cm"),
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6))
+
+```
 
