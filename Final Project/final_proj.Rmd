@@ -25,7 +25,7 @@ library(here)
 library(rio)
 #library(rgdal)
 library(edbuildmapr)
-
+library(albersusa)
 datasets <- data.frame(names = edld652::list_datasets())
 #fiscal_names <- datasets %>% filter(str_detect(names, "CCD_fiscal"))
 
@@ -41,6 +41,11 @@ sch <- get_data("EDFacts_acgr_sch_2011_2019")
 sd17 <- sd_shapepull(data_year = "2017", with_data = TRUE)
 sd17$year <- as.numeric(sd17$year)
 sd17$leaid <- sd17$GEOID
+
+county <- counties_sf() %>% 
+  mutate(County = paste0(name, " ",lsad)) %>% 
+  select(County, geometry)
+
 #failed attempts at getting the shp data for maps
 #location <- readOGR(here("location_data/Shapefiles_SCH", "EDGE_GEOCODE_PUBLICSCH_2021.shp"))
 #shape <- st_read(system.file( "location_data/Shapefiles_SCH/EDGE_GEOCODE_PUBLICSCH_2021.shp", package = "sf"), dsn = #"location_data/Shapefiles_SCH/EDGE_GEOCODE_PUBLICSCH_2021.shp")
@@ -77,10 +82,18 @@ fiscal_disability <- inner_join(dis_dat_sub, state_fiscal)
 
 
 mapable <- inner_join(fiscal_disability, sd17)
+mapable <- mapable %>% 
+  select(-geometry)
+
+county_map <- full_join(mapable, county)
 ```
 
 # Basic Maps
 ```{r}
+county_level <- mapable %>% 
+  group_by(County) %>% 
+  summarize(CWD_COHORT=mean(CWD_COHORT, na.rm=TRUE), ALL_COHORT=mean(ALL_COHORT), SpedRev=mean(C05+C15, na.rm=TRUE), NONCWD_GRAD_COHORT=mean(NONCWD_GRAD_COHORT), CWD_GRAD_COHORT=mean(CWD_GRAD_COHORT)) %>% mutate(CWD_RATE=CWD_COHORT/ALL_COHORT) %>% mutate(nonCWD=ALL_COHORT-CWD_COHORT) %>% mutate(SpedPerStudent=SpedRev/CWD_COHORT, CWD_GRAD_RATE = CWD_GRAD_COHORT/CWD_COHORT, NON_CWD_GRAD_RATE=NONCWD_GRAD_COHORT/(ALL_COHORT-CWD_COHORT))
+
 
 ore <- mapable %>% 
   filter(state_name=="Oregon") %>% 
