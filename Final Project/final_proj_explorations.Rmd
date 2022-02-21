@@ -23,6 +23,7 @@ library(tidyverse)
 library(edld652)
 library(stringr)
 library(here)
+library(tidyverse)
 
 datasets <- data.frame(names = edld652::list_datasets())
 fiscal_names <- datasets %>% filter(str_detect(names, "CCD_fiscal"))
@@ -38,9 +39,15 @@ raw_fisc_2018 <- raw_fisc_2018 %>%
   select(-CE3, -FL_CE3)
 fiscal <- rbind(raw_fisc_2017, raw_fisc_2018)
 
-doc <- get_documentation("NCES_CCD_fiscal_district_2017")
+
+raw_fisc_2018 <- get_data("NCES_CCD_fiscal_district_2018") 
+raw_fisc_2018 <- get_data("NCES_CCD_fiscal_district_2018") 
 
 state_info <- readr::read_csv("https://github.com/kjhealy/fips-codes/raw/master/state_fips_master.csv")
+
+
+acgr_lea <- get_data("EDFacts_acgr_lea_2011_2019")
+acgr_sch <- get_data("EDFacts_acgr_sch_2011_2019")
 ```
 
 # Revenue By State
@@ -112,6 +119,197 @@ dis_state_sums %>%
         panel.grid.major.y = element_blank(),
         panel.grid.major.x = element_line(color = "#A9A9A9", size = .6),
         panel.grid.minor.x = element_blank())  
+
+```
+
+```{r}
+#SpEd spending per student
+fiscal_acgr1 <- inner_join(raw_fisc_2017, acgr_lea, by = "LEAID") %>% mutate(SpedPerStudent=C05+C15/CWD_COHORT) %>%  mutate(PerCWD=CWD_COHORT/ALL_COHORT) %>% select(C05, C15, SpedPerStudent, STNAME, CWD_RATE, CWD_COHORT, LEAID, ALL_COHORT, ALL_RATE, PerCWD) %>% filter(LEAID!="1500030")
+
+fiscal_acgr1 <- fiscal_acgr1 %>% mutate(numCWDGradRate=recode(CWD_RATE,
+                                        "70-79" = 74.5,
+                                        "40-49"= 44.5,
+                                        "60-69"= 64.5,
+                                        "60-79"= 69.5,
+                                        "50-59"= 54.5,
+                                        "LE5"= 2.5,
+                                        "10-14"= 12,
+                                        "60-64"= 62,
+                                        "21-39"= 30,
+                                        "30-39"= 34.5,
+                                        "55-59"= 57,
+                                        "LE10"= 5,
+                                        "35-39"= 37,
+                                        "40-44"= 42,
+                                        "40-59"= 49.5,
+                                        "50-54"= 52,
+                                        "20-24"= 22,
+                                        "15-19"= 17,
+                                        "6-9"= 7.5,
+                                        "11-19"= 15,
+                                        "80-89"= 84.5,
+                                        "70-74"= 72,
+                                        "65-69"= 67,
+                                        "75-79"= 77,
+                                        "80-84"= 82,
+                                        "85-89"= 87,
+                                        "45-49"= 47,
+                                        "90-94"= 92,
+                                        "25-29"= 27,
+                                        "GE90"= 95,
+                                        "GE95"= 97.5,
+                                        "20-29"= 24.5,
+                                        "30-34"= 32))
+
+fiscal_acgr1 <- fiscal_acgr1 %>% mutate(numTotalGradRate=recode(ALL_RATE,
+                                        "70-79" = 74.5,
+                                        "40-49"= 44.5,
+                                        "60-69"= 64.5,
+                                        "60-79"= 69.5,
+                                        "50-59"= 54.5,
+                                        "LE5"= 2.5,
+                                        "10-14"= 12,
+                                        "60-64"= 62,
+                                        "21-39"= 30,
+                                        "30-39"= 34.5,
+                                        "55-59"= 57,
+                                        "LE10"= 5,
+                                        "35-39"= 37,
+                                        "40-44"= 42,
+                                        "40-59"= 49.5,
+                                        "50-54"= 52,
+                                        "20-24"= 22,
+                                        "15-19"= 17,
+                                        "6-9"= 7.5,
+                                        "11-19"= 15,
+                                        "80-89"= 84.5,
+                                        "70-74"= 72,
+                                        "65-69"= 67,
+                                        "75-79"= 77,
+                                        "80-84"= 82,
+                                        "85-89"= 87,
+                                        "45-49"= 47,
+                                        "90-94"= 92,
+                                        "25-29"= 27,
+                                        "GE90"= 95,
+                                        "GE95"= 97.5,
+                                        "20-29"= 24.5,
+                                        "30-34"= 32))
+fiscal_acgr1 <- fiscal_acgr1 %>% filter(!is.na(numTotalGradRate))
+fiscal_acgr1 <- fiscal_acgr1 %>% filter(!is.na(numCWDGradRate))
+fiscal_acgr1 <- fiscal_acgr1 %>% mutate(CWD_GRAD_COHORT= numCWDGradRate*CWD_COHORT*.01, NONCWD_GRAD_COHORT= (numTotalGradRate*ALL_COHORT*.01)-(numCWDGradRate*CWD_COHORT*.01))
+
+stateLevel <- fiscal_acgr1 %>% group_by(STNAME) %>% summarize(CWD_COHORT=mean(CWD_COHORT, na.rm=TRUE), ALL_COHORT=mean(ALL_COHORT), SpedRev=mean(C05+C15, na.rm=TRUE), NONCWD_GRAD_COHORT=mean(NONCWD_GRAD_COHORT), CWD_GRAD_COHORT=mean(CWD_GRAD_COHORT)) %>% mutate(CWD_RATE=CWD_COHORT/ALL_COHORT) %>% mutate(nonCWD=ALL_COHORT-CWD_COHORT) %>% mutate(SpedPerStudent=SpedRev/CWD_COHORT, CWD_GRAD_RATE = CWD_GRAD_COHORT/CWD_COHORT, NON_CWD_GRAD_RATE=NONCWD_GRAD_COHORT/(ALL_COHORT-CWD_COHORT))
+
+
+fiscal_acgr2 <-fiscal_acgr1%>% filter(is.numeric(SpedPerStudent))%>% filter(!is.na(SpedPerStudent)) %>% filter(SpedPerStudent>10) %>% group_by(STNAME) %>% summarize(StateSpedPerStudent=mean(SpedPerStudent))
+
+
+
+fiscal_acgr2 %>% ggplot(., aes(x=StateSpedPerStudent, y=STNAME)) +
+  geom_point(size=2, shape=23)+
+  geom_smooth(method=lm, se=FALSE)
+
+fiscal_acgr1 %>% filter(abs(scale(SpedPerStudent))<=1.96) %>% 
+ggplot(., aes(x=SpedPerStudent, y=numCWDGradRate-numTotalGradRate)) +
+  geom_point(size=2, shape=23)+
+  geom_smooth(method=lm, se=FALSE)
+
+
+```
+
+```{r}
+stateLevel2 <- stateLevel %>% pivot_longer(., cols=c("nonCWD","CWD_COHORT"), values_to="count")
+
+ stateLevel2%>% 
+   ggplot(.,aes(x=reorder(STNAME, count), y=count, fill = name))+
+  geom_col(position = "stack")+
+  coord_flip() +
+  labs(
+    title = "Students with and without Disabilities by State",
+    x = "State", 
+    y="Students with Disabilities"
+  )
+ 
+stateLevel%>% 
+   ggplot(.,aes(x=reorder(STNAME,CWD_RATE), y=CWD_RATE))+
+  geom_col(position = "stack")+
+  coord_flip() +
+  labs(
+    title = "Students with Disability Rates by State",
+    x = "State", 
+    y="Percent of Students with Disabilities"
+  )
+
+stateLevel%>% 
+   ggplot(.,aes(x=reorder(STNAME,CWD_RATE), y=SpedPerStudent))+
+  geom_col(position = "stack")+
+  coord_flip() +
+  labs(
+    title = "SpEd Revenue per Student by State",
+    x = "States in Order of Disability Rates, Descending", 
+    y="Avg Special Ed Revenue per Student"
+  )
+
+stateLevel%>% 
+   ggplot(.,aes(x=reorder(STNAME,CWD_GRAD_RATE-NON_CWD_GRAD_RATE), y=CWD_GRAD_RATE-NON_CWD_GRAD_RATE))+
+  geom_col(position = "stack")+
+  coord_flip() +
+  labs(
+    title = "Differences in CWD/Non-CWD Grad Rates by State",
+    x = "State in Order of Disability Rates, Descending", 
+    y="Differences in Grad Rates, Disability minus No Disabilties"
+  )
+```
+
+```{r}
+library(albersusa)
+library(colorspace)
+us <- usa_sf()
+
+stateLevel_subset <- stateLevel %>%
+  select("name"="STNAME", CWD_RATE, SpedPerStudent,CWD_GRAD_RATE,NON_CWD_GRAD_RATE)
+
+stateLevel_geo <- inner_join(us, stateLevel_subset) 
+
+ggplot(stateLevel_geo) +
+  geom_sf(aes(fill=CWD_RATE)) +
+  scale_fill_continuous_sequential(palette = "Heat") + 
+  labs(fill = "Percent of Students with Disabilities",
+       title = "Students with Disability Rates by State") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title.position = "plot",
+        legend.position = "bottom",
+        legend.key.size = unit(1, 'cm'),
+        legend.key.height = unit(.5,"cm"),
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6))
+
+ggplot(stateLevel_geo) +
+  geom_sf(aes(fill=SpedPerStudent)) +
+  scale_fill_continuous_sequential(palette = "Heat") + 
+  labs(fill = "Avg Special Ed Revenue per Student",
+       title = "SpEd Revenue per Student by State") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title.position = "plot",
+        legend.position = "bottom",
+        legend.key.size = unit(1.2, 'cm'),
+        legend.key.height = unit(.5,"cm"),
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6))
+
+ggplot(stateLevel_geo) +
+  geom_sf(aes(fill=CWD_GRAD_RATE-NON_CWD_GRAD_RATE)) +
+  scale_fill_continuous_sequential(palette = "Heat") + 
+  labs(fill = "Differences in Grad Rates\n(Disability - No Disabilties)",
+       title = "Differences in CWD/Non-CWD Grad Rates by State") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title.position = "plot",
+        legend.position = "bottom",
+        legend.key.size = unit(1.2, 'cm'),
+        legend.key.height = unit(.5,"cm"),
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6))
 
 ```
 
