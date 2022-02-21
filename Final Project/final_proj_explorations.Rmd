@@ -9,22 +9,20 @@ output: html_document
 #remotes::install_github("datalorax/edld652")
 library(edld652)
 
-set_key("sv=2020-08-04&ss=bfqt&srt=sco&sp=rwdlacupitfx&se=2023-01-01T04:52:19Z&st=2021-12-08T20:52:19Z&spr=https&sig=Nmx6zt%2B1iAXDoI5CIgBRoPlsvOPuLlBPvK5uUsldPnw%3D", overwrite = TRUE)
-#install.packages("usethis")
-usethis::edit_r_environ()
-list_datasets()
 
-unlink(file.path("~",".Renviron"))
+#install.packages("usethis")
+#usethis::edit_r_environ()
+#list_datasets()
+
+#unlink(file.path("~",".Renviron"))
 ```
 
 
 ```{r}
 library(tidyverse)
-library(edld652)
 library(stringr)
 library(here)
-library(tidyverse)
-
+library(sf)
 datasets <- data.frame(names = edld652::list_datasets())
 fiscal_names <- datasets %>% filter(str_detect(names, "CCD_fiscal"))
 
@@ -340,11 +338,13 @@ fiscal_disability <- inner_join(fiscal_temp, dis_dat_sub)
 
 
 
-mapable <- inner_join(fiscal_disability, sd17)
-mapable <- mapable %>% 
-  select(-geometry)
+district_geo <- left_join(sd17, fiscal_disability)
 
-county_sums <- mapable %>% 
+
+
+to_sum <- district_geo
+st_geometry(to_sum) <- NULL
+county_sums <- to_sum %>% 
   group_by(County, state_name) %>% 
   summarize(mean_sped_stud = mean(SpedPerStudent, na.rm = TRUE), 
             tot_idea = sum(idea_count))
@@ -406,6 +406,17 @@ county_map %>%
         legend.key.height = unit(.5,"cm"),
         axis.text.y = element_text(size = 6),
         axis.text.x = element_text(size = 6))
+
+```
+
+# District Level Plots
+```{r}
+
+ore_district <- district_geo %>% 
+  filter(state_name=="Oregon") %>% 
+  select(idea_count, idea_rev_fed = C15, geometry)  
+
+plot(ore_district, border = "light gray", lwd = 0.5)
 
 ```
 
