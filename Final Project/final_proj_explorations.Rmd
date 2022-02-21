@@ -6,11 +6,11 @@ output: html_document
 ---
 
 ```{r InitialSetup}
-remotes::install_github("datalorax/edld652")
+#remotes::install_github("datalorax/edld652")
 library(edld652)
 
 set_key("sv=2020-08-04&ss=bfqt&srt=sco&sp=rwdlacupitfx&se=2023-01-01T04:52:19Z&st=2021-12-08T20:52:19Z&spr=https&sig=Nmx6zt%2B1iAXDoI5CIgBRoPlsvOPuLlBPvK5uUsldPnw%3D", overwrite = TRUE)
-install.packages("usethis")
+#install.packages("usethis")
 usethis::edit_r_environ()
 list_datasets()
 
@@ -82,7 +82,7 @@ state_fisc_sums <- state_fiscal %>%
 
 
 state_fisc_sums %>% 
-  ggplot(.,aes(fct_reorder(state_name, mean_rev), mean_rev))+
+  ggplot(.,aes(fct_reorder(state_name, mean_sped_rev_st), mean_sped_rev_st))+
   geom_col(fill = "cornflowerblue", alpha = .9)+
   coord_flip() +
   labs(
@@ -195,6 +195,7 @@ fiscal_acgr1 <- fiscal_acgr1 %>% mutate(numTotalGradRate=recode(ALL_RATE,
                                         "GE95"= 97.5,
                                         "20-29"= 24.5,
                                         "30-34"= 32))
+
 fiscal_acgr1 <- fiscal_acgr1 %>% filter(!is.na(numTotalGradRate))
 fiscal_acgr1 <- fiscal_acgr1 %>% filter(!is.na(numCWDGradRate))
 fiscal_acgr1 <- fiscal_acgr1 %>% mutate(CWD_GRAD_COHORT= numCWDGradRate*CWD_COHORT*.01, NONCWD_GRAD_COHORT= (numTotalGradRate*ALL_COHORT*.01)-(numCWDGradRate*CWD_COHORT*.01))
@@ -307,6 +308,101 @@ ggplot(stateLevel_geo) +
   theme(plot.title.position = "plot",
         legend.position = "bottom",
         legend.key.size = unit(1.2, 'cm'),
+        legend.key.height = unit(.5,"cm"),
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6))
+
+```
+
+
+# County Level Data Prep
+```{r}
+library(edbuildmapr)
+
+sd17 <- sd_shapepull(data_year = "2017", with_data = TRUE)
+sd17$year <- as.numeric(sd17$year)
+sd17$leaid <- sd17$GEOID
+
+county <- counties_sf() %>% 
+  mutate(County = paste0(name, " ",lsad)) %>% 
+  select(County, geometry, state_name = state)
+
+
+dis_dat_sub <- dis_dat %>% 
+  select(state_name = STATENAME, LEAID, LEA_NAME, YEAR , IDEA_COUNT) %>% 
+  janitor::clean_names()
+dis_dat_sub$state_name <- str_to_title(dis_dat_sub$state_name)
+
+fiscal_temp <- inner_join(raw_fisc_2017, acgr_lea, by = "LEAID") %>% mutate(SpedPerStudent=C05+C15/CWD_COHORT) %>%  mutate(PerCWD=CWD_COHORT/ALL_COHORT) %>% select(leaid = LEAID, C05, C15, SpedPerStudent, STNAME, CWD_RATE, CWD_COHORT, LEAID, ALL_COHORT, ALL_RATE, PerCWD) %>% filter(leaid!="1500030")
+
+
+fiscal_disability <- inner_join(fiscal_temp, dis_dat_sub)
+
+
+
+mapable <- inner_join(fiscal_disability, sd17)
+mapable <- mapable %>% 
+  select(-geometry)
+
+county_sums <- mapable %>% 
+  group_by(County, state_name) %>% 
+  summarize(mean_sped_stud = mean(SpedPerStudent, na.rm = TRUE), 
+            tot_idea = sum(idea_count))
+
+
+county_map <- merge(county_sums, county, by = c("County", "state_name"), all = F)
+
+
+```
+
+
+# Bad County Level Plots
+```{r}
+
+#this is ugly - some of these numbers are impossibly high...need to recheck calculations
+county_map %>% 
+  filter(mean_sped_stud >0) %>% 
+ggplot() +
+  geom_sf(aes(fill=mean_sped_stud, geometry = geometry)) +
+  scale_fill_continuous_sequential(palette = "Heat") + 
+  labs(fill = "Percent of Students with Disabilities",
+       title = "Students with Disability Rates by State") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title.position = "plot",
+        legend.position = "bottom",
+        legend.key.size = unit(1, 'cm'),
+        legend.key.height = unit(.5,"cm"),
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6))
+
+# maybe just oregon
+county_map %>% 
+  filter(state_name =="Oregon") %>% 
+  ggplot()+
+    geom_sf(aes(fill=mean_sped_stud, geometry = geometry)) +
+  scale_fill_continuous_sequential(palette = "Heat") + 
+  labs(title = "Mean Special Ed. Spending per Student", 
+       fill = "") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title.position = "plot",
+        legend.position = "bottom",
+        legend.key.size = unit(1, 'cm'),
+        legend.key.height = unit(.5,"cm"),
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6))
+
+
+county_map %>% 
+  filter(state_name =="Oregon") %>% 
+  ggplot()+
+    geom_sf(aes(fill=tot_idea, geometry = geometry)) +
+  scale_fill_continuous_sequential(palette = "Heat") + 
+  labs(title = "Total Sped Students", 
+       fill = "") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title.position = "plot",
+        legend.position = "bottom",
+        legend.key.size = unit(1, 'cm'),
         legend.key.height = unit(.5,"cm"),
         axis.text.y = element_text(size = 6),
         axis.text.x = element_text(size = 6))
