@@ -8,21 +8,82 @@ output: html_document
 library(tidyverse)
 library(rio)
 library(here)
+library(ungeviz)
 
 transit_cost <- read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-01-05/transit_cost.csv')
 
 # install.packages("tidytuesdayR")
-transit_cost <- tidytuesdayR::tt_load(2021, week = 2)
+country_codes <- countrycode::codelist %>% 
+  select(country_name = country.name.en, country = ecb) %>% 
+  na.omit()
+transit_cost <- tidytuesdayR::tt_load(2021, week = 2) 
+transit_df <- transit_cost[[1]] %>% 
+  mutate(real_cost = as.numeric(real_cost))
+transit <- left_join(transit_df, country_codes, by = "country")
+crime <- import(here("crime.csv"))
 
 
 ```
 
 Part 1
-```{r}
-country_codes <- countrycode::codelist %>% 
-  select(country_name = country.name.en, country = ecb)
+```{r, fig.width= 6.5, fig.height=10}
+transit_sum <- transit %>% 
+  group_by(country_name) %>% 
+  summarize(n = n(), 
+            mean_cost = mean(real_cost, na.rm = TRUE), 
+            se_cost = sd(real_cost, na.rm = TRUE) / sqrt(n()), 
+            lower = mean_cost + qnorm(0.025) * se_cost,
+            upper = mean_cost + qnorm(0.975) * se_cost) %>% 
+  filter(n>=3 & !is.na(country_name)) 
+  
+transit_sum %>% 
+ggplot(., aes(mean_cost, reorder(country_name, mean_cost))) +
+  geom_errorbarh(
+    aes(xmin = ifelse(
+        lower<0, 0, 
+        lower),
+        xmax = upper, 
+        height = 0), 
+    alpha = .8) +
+  geom_point(colour = "cornflowerblue")+
+  scale_x_continuous(labels = scales::comma)+
+  theme_minimal()+
+  labs(title = "Cost to build transit systems vary across countries", 
+       x = "Real Cost (In millions of dollars)", 
+       caption = "Data provided through #tidytuesday by the Transit Costs Project", 
+       y = "Country")+
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    plot.title.position = "plot", 
+    #plot.caption.position = "center"
+    plot.caption = element_text(hjust = 0.5))
+```
 
-crime <- import(here("crime.csv"))
+# Part 2
+```{r, fig.width= 6.5, fig.height=10}
+transit_sum %>% 
+ggplot(., aes(mean_cost, reorder(country_name, mean_cost))) +
+   stat_confidence_density(
+     aes( moe = se_cost), 
+     fill = "darkslategray4", 
+     height = 0.4   ) +
+  geom_point(colour = "cornflowerblue")+
+  scale_x_continuous(labels = scales::comma)+
+  theme_minimal()+
+  labs(title = "Cost to build transit systems vary across countries", 
+       x = "Real Cost (In millions of dollars)", 
+       caption = "Data provided through #tidytuesday by the Transit Costs Project", 
+       y = "Country")+
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    plot.title.position = "plot", 
+    #plot.caption.position = "center"
+    plot.caption = element_text(hjust = 0.5), 
+    text =element_text(family = "Charter") )  
 
 ```
 
