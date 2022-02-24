@@ -78,11 +78,12 @@ state_fisc_sums <- state_fiscal %>%
             ) 
 
 
-
+#NOTE: Could be neat to use log scale and convert to dollars, code added on line 86
 state_fisc_sums %>% 
   ggplot(.,aes(fct_reorder(state_name, mean_sped_rev_st), mean_sped_rev_st))+
   geom_col(fill = "cornflowerblue", alpha = .9)+
   coord_flip() +
+  scale_y_log10(labels = scales::dollar) +
   labs(
     title = "Revenue by State",
     x = "State", 
@@ -102,7 +103,7 @@ dis_state_sums <- dis_dat %>%
   group_by(STATENAME) %>% 
   summarize(idea_tot = sum(IDEA_COUNT, na.rm = TRUE))
 
-
+#NOTE: I added in line 139 to shrink the y labels a bit to make it look more fitting
 dis_state_sums %>% 
   ggplot(.,aes(fct_reorder(STATENAME, idea_tot), idea_tot))+
   geom_col(fill = "cornflowerblue", alpha = .9)+
@@ -116,7 +117,8 @@ dis_state_sums %>%
   theme(plot.title.position = "plot",
         panel.grid.major.y = element_blank(),
         panel.grid.major.x = element_line(color = "#A9A9A9", size = .6),
-        panel.grid.minor.x = element_blank())  
+        panel.grid.minor.x = element_blank(),
+        axis.text.y = element_text(size = 8))             
 
 ```
 
@@ -197,16 +199,17 @@ fiscal_acgr1 <- fiscal_acgr1 %>% mutate(numTotalGradRate=recode(ALL_RATE,
 
 fiscal_acgr1 <- fiscal_acgr1 %>% mutate(GE50 = case_when(numCWDGradRate>50 | numCWDGradRate=="GE50" ~ 1, numCWDGradRate<50 | numCWDGradRate=="LT50"~0))
 
-
+#NOTE: Wouild be fun to add in a color to your title to match your line. Code added on line 207 and 212.
 fiscal_acgr1 %>%  filter(abs(scale(SpedPerStudent))<=1.65) %>%ggplot(., aes(x=SpedPerStudent, y=GE50)) + 
   geom_point(alpha=.5) +
   stat_smooth(method="glm", se=TRUE, method.args = list(family=binomial)) + 
   labs(
-    title = "Likelihood of a >50% CWD Cohort Graduation Rate vs Sped Revenue per Student",
+    title = "<span style = 'color: blue'>**Likelihood**</span> of a >50% CWD Cohort Graduation Rate vs Sped Revenue per Student",
     x = "Avg. Sped Revenue", 
     y="Likelihood"
   )+
-  theme_minimal()
+  theme_minimal() +
+  theme(plot.title = ggtext::element_markdown()) 
 
 
 
@@ -231,10 +234,10 @@ fiscal_acgr2 %>% ggplot(., aes(x=StateSpedPerStudent, y=reorder(STNAME, StateSpe
   )+
   theme_minimal()
 
-
+#I used an alpha of .3 in your geom_point it makes the lm line more prominant while still seeing your points, cool visual though!
 fiscal_acgr1 %>% filter(abs(scale(SpedPerStudent))<=1.96) %>% 
 ggplot(., aes(x=SpedPerStudent, y=numCWDGradRate-numTotalGradRate)) +
-  geom_point(size=2, shape=23)+
+  geom_point(size=2, shape=23, alpha = .3)+
   geom_smooth(method=lm, se=TRUE)+
   labs(
     title = "Difference in Graduation Rates of CWD - Non-CWD vs Avg Sped Revenue per CWD Student",
@@ -269,12 +272,16 @@ stateLevel%>%
     y="Percent of Students with Disabilities"
   )
 
+#NOTE: would be cool if you added a highlight and subtitle like I included below. Would need to add gghighlight to library. 
+library(gghighlight)
 stateLevel%>% 
    ggplot(.,aes(x=reorder(STNAME,CWD_RATE), y=SpedPerStudent))+
   geom_col(position = "stack")+
+  gghighlight(STNAME == "Washington") +
   coord_flip() +
   labs(
     title = "SpEd Revenue per Student by State",
+    subtitle = "With Washington showing the highest revenue",
     x = "States in Order of Disability Rates, Descending", 
     y="Avg Special Ed Revenue per Student"
   )
@@ -326,6 +333,7 @@ ggplot(stateLevel_geo) +
         axis.text.y = element_text(size = 6),
         axis.text.x = element_text(size = 6))
 
+#NOTE: Maybe a little more informatoin in a subtitle or caption to explane what the key is saying here..not super intuitive when reading the negatives, but otherwise awesome plot!
 ggplot(stateLevel_geo) +
   geom_sf(aes(fill=CWD_GRAD_RATE-NON_CWD_GRAD_RATE)) +
   scale_fill_continuous_sequential(palette = "Heat") + 
@@ -388,6 +396,8 @@ county_map <- merge(county_sums, county, by = c("County", "state_name"), all = F
 # Bad County Level Plots
 ```{r}
 
+#NOTE: Another idea is to do it by a region so maybe the western region and show a few states, that way you show more data and include Oregon as well. Just a thought!
+
 #this is ugly - some of these numbers are impossibly high...need to recheck calculations
 county_map %>% 
   filter(mean_sped_stud >0) %>% 
@@ -449,3 +459,7 @@ plot(ore_district, border = "light gray", lwd = 0.5)
 
 ```
 
+
+
+
+Overall I felt as though this project was extremely well done. The way you set up your data throughout the script told a story well and it grew throughout which made it very easy to follow. I like that you chose variables that you could use multiple different ways throughout each graph and could mix and match them together and still show great results. Each graph was very well done I just included a few lines of code here and there to add a little bit more of a visual appeal. I think the graph of "Students with and without Disabilities by State" was awesome I really liked the colors you used and the way you set up the plot to show a stacked bar fit well with the data. For that plot I recommend you change up your legend title to be more unique and fit with the plot. The maps were super cool and well thought out I do agree that the whole map has a lot going on. I suggested maybe narrowing it down to the Western region to show a bit more data to see some comparison. Really cool to see the map filled out though great job with that! I am not quite sure what you are saying with the plots in the last chunk I see the code you used for the district but I think the plots need some additional details to get the point across. Otherwise everything is looking super cool. I like the story you are telling and it seems you understood the data well and created some cool visuals to show the data, well done!
