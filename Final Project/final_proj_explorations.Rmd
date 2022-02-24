@@ -88,11 +88,30 @@ state_fisc_sums %>%
     x = "State", 
     y="Revenue"
   ) +
+  scale_y_continuous(labels=scales::dollar_format()) + #displaying axis in dollars
   theme_minimal(base_size = 14) +
   theme(plot.title.position = "plot",
         panel.grid.major.y = element_blank(),
         panel.grid.major.x = element_line(color = "#A9A9A9", size = .6),
         panel.grid.minor.x = element_blank())  ## something appears to be going on with hawaii...
+
+#Wow yeah Hawaii sure does seem to have something going on...depending on what your goals are for this plot, would it be worth it to make an additional plot leaving Hawaii out? Or maybe with a log10 y-axis scale, as below? Depends on what you're hoping to communicate with this plot; if you just want to get an overview or show how unusual Hawaii is, definitely keep it as it is!
+
+state_fisc_sums %>% 
+  ggplot(.,aes(fct_reorder(state_name, mean_sped_rev_st), mean_sped_rev_st))+
+  geom_col(fill = "cornflowerblue", alpha = .9)+
+  coord_flip() +
+  labs(
+    title = "Revenue by State",
+    x = "State", 
+    y="Revenue"
+  ) +
+  scale_y_log10(labels=scales::dollar_format()) + #displaying axis in dollars
+  theme_minimal(base_size = 14) +
+  theme(plot.title.position = "plot",
+        panel.grid.major.y = element_blank(),
+        panel.grid.major.x = element_line(color = "#A9A9A9", size = .6),
+        panel.grid.minor.x = element_blank())  
 ```
 
 # Disabilities by State
@@ -112,13 +131,17 @@ dis_state_sums %>%
     x = "State", 
     y="Students with Disabilities"
   ) +
+  scale_y_continuous(labels=scales::dollar_format(), expand = c(0,0)) + #displaying axis in dollars, closing gap between labels and bars
   theme_minimal(base_size = 14) +
   theme(plot.title.position = "plot",
         panel.grid.major.y = element_blank(),
         panel.grid.major.x = element_line(color = "#A9A9A9", size = .6),
         panel.grid.minor.x = element_blank())  
 
+
 ```
+
+
 
 ```{r}
 #SpEd spending per student
@@ -229,8 +252,10 @@ fiscal_acgr2 %>% ggplot(., aes(x=StateSpedPerStudent, y=reorder(STNAME, StateSpe
     x = "Avg. Sped Revenue", 
     y="State"
   )+
+  scale_x_continuous(labels=scales::dollar_format(), expand = c(0,0)) + #displaying axis in dollars, moving data closer to state labels
   theme_minimal()
 
+#For this plot, it might be beneficial to use a bar chart or draw lines from the points to the state labels, as it is somewhat difficult to track which point belongs to which state. 
 
 fiscal_acgr1 %>% filter(abs(scale(SpedPerStudent))<=1.96) %>% 
 ggplot(., aes(x=SpedPerStudent, y=numCWDGradRate-numTotalGradRate)) +
@@ -241,9 +266,10 @@ ggplot(., aes(x=SpedPerStudent, y=numCWDGradRate-numTotalGradRate)) +
     x = "Avg. Sped Revenue", 
     y="Difference in Graduaion Rate, CWD-Non-CWD"
   )+
+  scale_y_continuous(labels=scales::dollar_format()) + #displaying axis in dollars
   theme_minimal()
 
-
+# I like the choice to use shapes as points for this; it gives a different look to the densities compared to changing the transparency of points. For these plots, I'm not sure I completely understand what is being displayed just because I'm not familiar with this dataset; possibly adding a subtitle or caption to explain the information being displayed
 ```
 
 ```{r}
@@ -253,11 +279,13 @@ stateLevel2 <- stateLevel %>% pivot_longer(., cols=c("nonCWD","CWD_COHORT"), val
    ggplot(.,aes(x=reorder(STNAME, count), y=count, fill = name))+
   geom_col(position = "stack")+
   coord_flip() +
+  scale_y_continuous(expand = c(0,0)) + #pushing bars closer to names
   labs(
     title = "Students with and without Disabilities by State",
     x = "State", 
     y="Students with Disabilities"
   )
+ #Interesting comparison! What if you overlayed labels for the percentages of CWD_cohort and nonCWD on the respective parts of each bar, to demonstrate respective proportions? I do like this as a stacked bar chart, since the main information being conveyed is number of students with disabilities, so splitting the columns for the cohorts to be side by side might get in the way of that, but the proportions would be interesting to know as well, potentially.
  
 stateLevel%>% 
    ggplot(.,aes(x=reorder(STNAME,CWD_RATE), y=CWD_RATE))+
@@ -288,6 +316,7 @@ stateLevel%>%
     x = "State in Order of Disability Rates, Descending", 
     y="Differences in Grad Rates, Disability minus No Disabilties"
   )
+# This is interesting, with 0 on the right side of the graph! It makes it slightly harder to tell which state goes with which bar, but it's an effective way to demonstrate that the y axis is negative rather than positive. To make it somewhat easier to parse, could you put the labels on the right side too, or maybe alternate fill and label colors to differentiate them from each other a bit?
 ```
 
 ```{r}
@@ -338,6 +367,8 @@ ggplot(stateLevel_geo) +
         legend.key.height = unit(.5,"cm"),
         axis.text.y = element_text(size = 6),
         axis.text.x = element_text(size = 6))
+
+#These are great. I would maybe suggest removing the axis labels and gridlines, since the latitude and longitude aren't directly relevant to what you are looking at. 
 
 ```
 
@@ -436,6 +467,7 @@ county_map %>%
         axis.text.y = element_text(size = 6),
         axis.text.x = element_text(size = 6))
 
+# These are really informative as well. Adding a label to the legend would help on the spending per student map (or just adding dollar signs), but otherwise these look nice to me. This is purely a personal taste thing, but I might also suggest changing the color palette for this, as my interpretation of the red is that it's kind of a warning.
 ```
 
 # District Level Plots
@@ -446,6 +478,8 @@ ore_district <- district_geo %>%
   select(idea_count, idea_rev_fed = C15, geometry)  
 
 plot(ore_district, border = "light gray", lwd = 0.5)
+
+#These look promising! Probably on your final draft there will be more information in the title and about what the colors mean?
 
 ```
 
