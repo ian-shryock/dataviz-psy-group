@@ -93,6 +93,8 @@ state_fisc_sums %>%
         panel.grid.major.y = element_blank(),
         panel.grid.major.x = element_line(color = "#A9A9A9", size = .6),
         panel.grid.minor.x = element_blank())  ## something appears to be going on with hawaii...
+
+# Yeah, and I went back through your code and I have no idea why Hawaii is like this??
 ```
 
 # Disabilities by State
@@ -104,13 +106,13 @@ dis_state_sums <- dis_dat %>%
 
 
 dis_state_sums %>% 
-  ggplot(.,aes(fct_reorder(STATENAME, idea_tot), idea_tot))+
+  ggplot(.,aes(fct_reorder(STATENAME, idea_tot), idea_tot/1e6))+ #add the divided by 1e6 so the x axis is now in millions but easier to understand
   geom_col(fill = "cornflowerblue", alpha = .9)+
   coord_flip() +
   labs(
     title = "Students with Disabilities by State",
     x = "State", 
-    y="Students with Disabilities"
+    y="Students with Disabilities (millions)" # adjusted this to account for change in x-axis scale
   ) +
   theme_minimal(base_size = 14) +
   theme(plot.title.position = "plot",
@@ -206,13 +208,13 @@ fiscal_acgr1 %>%  filter(abs(scale(SpedPerStudent))<=1.65) %>%ggplot(., aes(x=Sp
     x = "Avg. Sped Revenue", 
     y="Likelihood"
   )+
-  theme_minimal()
+  theme_minimal() # Not entirely sure I understand what you are trying to do here? 
 
 
 
 fiscal_acgr1 <- fiscal_acgr1 %>% filter(!is.na(numTotalGradRate))
 fiscal_acgr1 <- fiscal_acgr1 %>% filter(!is.na(numCWDGradRate))
-fiscal_acgr1 <- fiscal_acgr1 %>% mutate(CWD_GRAD_COHORT= numCWDGradRate*CWD_COHORT*.01, NONCWD_GRAD_COHORT= (numTotalGradRate*ALL_COHORT*.01)-(numCWDGradRate*CWD_COHORT*.01))
+fiscal_acgr1 <- fiscal_acgr1 %>% mutate(CWD_GRAD_COHORT= numCWDGradRate*CWD_COHORT*.01, NONCWD_GRAD_COHORT= (numTotalGradRate*ALL_COHORT*.01)-(numCWDGradRate*CWD_COHORT*.01)) 
 
 stateLevel <- fiscal_acgr1 %>% group_by(STNAME) %>% summarize(CWD_COHORT=mean(CWD_COHORT, na.rm=TRUE), ALL_COHORT=mean(ALL_COHORT), SpedRev=mean(C05+C15, na.rm=TRUE), NONCWD_GRAD_COHORT=mean(NONCWD_GRAD_COHORT), CWD_GRAD_COHORT=mean(CWD_GRAD_COHORT)) %>% mutate(CWD_RATE=CWD_COHORT/ALL_COHORT) %>% mutate(nonCWD=ALL_COHORT-CWD_COHORT) %>% mutate(SpedPerStudent=SpedRev/CWD_COHORT, CWD_GRAD_RATE = CWD_GRAD_COHORT/CWD_COHORT, NON_CWD_GRAD_RATE=NONCWD_GRAD_COHORT/(ALL_COHORT-CWD_COHORT))
 
@@ -241,8 +243,11 @@ ggplot(., aes(x=SpedPerStudent, y=numCWDGradRate-numTotalGradRate)) +
     x = "Avg. Sped Revenue", 
     y="Difference in Graduaion Rate, CWD-Non-CWD"
   )+
-  theme_minimal()
+  theme_minimal() +
+  scale_y_continuous(-50, 50) # I added this just to make the plot a bit more obvious and have standardize min/max of y axis to +/- 50. 
+# I think I get it now... That as AVG Sped Revenue increases, the difference between the groups gets smaller. 
 
+# Consider pivot longer and making the two groups in one column. You can then add color to the points. One color for CWD and one for Non-CWD.
 
 ```
 
@@ -280,14 +285,15 @@ stateLevel%>%
   )
 
 stateLevel%>% 
-   ggplot(.,aes(x=reorder(STNAME,CWD_GRAD_RATE-NON_CWD_GRAD_RATE), y=CWD_GRAD_RATE-NON_CWD_GRAD_RATE))+
+   ggplot(.,aes(x=reorder(STNAME,CWD_GRAD_RATE-NON_CWD_GRAD_RATE), y=(CWD_GRAD_RATE-NON_CWD_GRAD_RATE) * 100))+ # to make the scale easier to view. I think this makes it a bit clearer in that it is in % now. 
   geom_col(position = "stack")+
   coord_flip() +
   labs(
     title = "Differences in CWD/Non-CWD Grad Rates by State",
-    x = "State in Order of Disability Rates, Descending", 
-    y="Differences in Grad Rates, Disability minus No Disabilties"
-  )
+    x = "", # Leaving blank will suffice since the title describes what the plot shows and the state names are indicative of being ordered by state
+    y="Differences in Grad Rates Between Disability and No Disability (%)"
+  ) # this is a cool idea. I am trying to think of ways to make this cleaner and more appealing. Consider moving the 0 back to the left side of y-axis so it is easier for viewer to tell which bar corresponds to which state.
+
 ```
 
 ```{r}
@@ -314,17 +320,18 @@ ggplot(stateLevel_geo) +
         axis.text.x = element_text(size = 6))
 
 ggplot(stateLevel_geo) +
-  geom_sf(aes(fill=SpedPerStudent)) +
-  scale_fill_continuous_sequential(palette = "Heat") + 
-  labs(fill = "Avg Special Ed Revenue per Student",
-       title = "SpEd Revenue per Student by State") +
-  theme_minimal(base_size = 12) +
-  theme(plot.title.position = "plot",
-        legend.position = "bottom",
-        legend.key.size = unit(1.2, 'cm'),
-        legend.key.height = unit(.5,"cm"),
-        axis.text.y = element_text(size = 6),
-        axis.text.x = element_text(size = 6))
+   geom_sf(aes(fill=SpedPerStudent)) +
+   scale_fill_continuous_sequential(palette = "Heat") + 
+   labs(fill = "Avg Special Ed Revenue per Student",
+        title = "SpEd Revenue per Student by State") +
+   theme_minimal(base_size = 12) +
+   theme(plot.title.position = "plot",
+         legend.position = "bottom",
+         legend.key.size = unit(1.2, 'cm'),
+         legend.key.height = unit(.5,"cm"),
+         axis.text.y = element_text(size = 1),
+         axis.text.x = element_text(size = 1)) +
+   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) # got rid of the gridlines. I would suggest doing this for all of your maps. No need for gridlines or axis labels.
 
 ggplot(stateLevel_geo) +
   geom_sf(aes(fill=CWD_GRAD_RATE-NON_CWD_GRAD_RATE)) +
@@ -336,8 +343,10 @@ ggplot(stateLevel_geo) +
         legend.position = "bottom",
         legend.key.size = unit(1.2, 'cm'),
         legend.key.height = unit(.5,"cm"),
-        axis.text.y = element_text(size = 6),
-        axis.text.x = element_text(size = 6))
+        axis.text.y = element_text(size = 1),
+        axis.text.x = element_text(size = 1)) +
+   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
 
 ```
 
@@ -393,7 +402,7 @@ county_map %>%
   filter(mean_sped_stud >0) %>% 
 ggplot() +
   geom_sf(aes(fill=mean_sped_stud, geometry = geometry)) +
-  scale_fill_continuous_sequential(palette = "Heat") + 
+  scale_fill_continuous_sequential(palette = "Heat") + #Change the scale so it is in understandable numbers.
   labs(fill = "Percent of Students with Disabilities",
        title = "Students with Disability Rates by State") +
   theme_minimal(base_size = 12) +
@@ -402,7 +411,7 @@ ggplot() +
         legend.key.size = unit(1, 'cm'),
         legend.key.height = unit(.5,"cm"),
         axis.text.y = element_text(size = 6),
-        axis.text.x = element_text(size = 6))
+        axis.text.x = element_text(size = 6)) # This is great. I think you can just add in a line that indicates if NA show white. This would help keep all of the counties showing even if they have NA values. 
 
 # maybe just oregon
 county_map %>% 
@@ -419,7 +428,7 @@ county_map %>%
         legend.key.height = unit(.5,"cm"),
         axis.text.y = element_text(size = 6),
         axis.text.x = element_text(size = 6))
-
+# VERY NICE
 
 county_map %>% 
   filter(state_name =="Oregon") %>% 
