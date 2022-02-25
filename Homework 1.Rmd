@@ -9,6 +9,8 @@ library(tidyverse)
 library(rio)
 library(here)
 library(ungeviz)
+library(janitor)
+library(ggtext) 
 
 transit_cost <- read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-01-05/transit_cost.csv')
 
@@ -20,7 +22,7 @@ transit_cost <- tidytuesdayR::tt_load(2021, week = 2)
 transit_df <- transit_cost[[1]] %>% 
   mutate(real_cost = as.numeric(real_cost))
 transit <- left_join(transit_df, country_codes, by = "country")
-crime <- import(here("crime.csv"))
+crime <- import(here("data", "crime.csv"))%>% clean_names()
 
 
 ```
@@ -86,4 +88,51 @@ ggplot(., aes(mean_cost, reorder(country_name, mean_cost))) +
     text =element_text(family = "Charter") )  
 
 ```
+
+
+
+
+# Part 5
+```{r}
+model_data <- crime %>% 
+  mutate(neighborhood_id = relevel(factor(neighborhood_id), ref = "barnum"))
+
+m <- glm(is_crime ~ neighborhood_id, 
+         data = model_data,
+         family = "binomial")
+
+tidied <- broom::tidy(m)
+
+ppoints(20)
+
+barnumwest <- tidied %>% 
+  filter(term == "neighborhood_idbarnum-west")
+
+qnorm(ppoints(20), 
+      mean = barnumwest$estimate,
+      sd = barnumwest$std.error)
+
+discretized2 <- data.frame(
+  x = qnorm(ppoints(20), mean = barnumwest$estimate, sd = barnumwest$std.error)) 
+discretized2 <- discretized2 %>% mutate(winner = ifelse(x <= 0, "#b1daf4", "#f8f1a9"))
+
+ggplot(discretized2, aes(x)) +
+  geom_dotplot(aes(fill = winner), binwidth = 0.022) +
+  geom_vline(xintercept = 0, 
+             color = "red4", 
+             linetype = 1, 
+             size = 3) +
+  scale_fill_identity(guide = "none") +
+  scale_y_continuous(name = "", 
+                     breaks = NULL)+
+  scale_x_continuous(name = "", 
+                     breaks = seq(-.1, .1, .05)) +
+  labs(x = "Difference in log odds of a crime being committed",
+       y = "",
+       caption = "Each ball represents 5% probability",
+       title = "Probability of differential crime rates between neighborhoods",
+       subtitle = "Barnum West vs Barnum")+
+  theme_minimal()
+```
+
 
