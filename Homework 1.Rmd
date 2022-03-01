@@ -4,13 +4,16 @@ author: "Dillon, Futing, Ian"
 date: "2/14/2022"
 output: html_document
 ---
-```{r}
+```{r, message = FALSE, warning = FALSE}
 library(tidyverse)
 library(rio)
 library(here)
 library(ungeviz)
 library(janitor)
 library(ggtext) 
+library(gghighlight)
+library(ggrepel)
+library(ggforce)
 
 transit_cost <- read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2021/2021-01-05/transit_cost.csv')
 
@@ -23,7 +26,6 @@ transit_df <- transit_cost[[1]] %>%
   mutate(real_cost = as.numeric(real_cost))
 transit <- left_join(transit_df, country_codes, by = "country")
 crime <- import(here("data","crime.csv"))%>% clean_names()
-
 
 ```
 
@@ -89,7 +91,65 @@ ggplot(., aes(mean_cost, reorder(country_name, mean_cost))) +
 
 ```
 
+# Part 3
+```{r}
+by_city <- transit %>% 
+  group_by(city, country_name) %>%
+  summarize(length_mean= mean(length, na.rm = TRUE),
+            real_cost_mean = mean(real_cost, na.rm = TRUE),
+            num_trans = n())
 
+ggplot(by_city, aes(length_mean, real_cost_mean)) +
+  geom_point(aes(size = num_trans), color = "#AC05B0") +
+  scale_size_binned("Number of transit systems", breaks = c(5, 10, 20)) +
+  gghighlight(country_name == "India") +
+  geom_text_repel(aes(label = city),
+                  min.segment.length = 0,
+                  box.padding = 0.18) +
+  scale_x_log10(limits=c(NA,200)) +
+  scale_y_log10(labels = scales::dollar) +
+  theme_minimal(base_size = 14) +
+  labs(title = "Longer transit systems tend to cost more",
+       subtitle = "<span style='color: #AC05B0;'>India</span> has among the most transit systems in the world",
+         caption = "Note the axes are on the log scale",
+         x = "Average length",
+         y = "Average cost") +
+  theme(plot.subtitle = element_markdown(),
+        plot.title.position = "plot",
+        axis.title.y = element_text(size = 13),
+        axis.title.x = element_text(size = 13),
+        legend.position = "bottom"
+        ) 
+```
+
+# Part 4
+```{r}
+by_city %>%
+  drop_na() %>%
+ggplot(aes(length_mean, real_cost_mean)) +
+  geom_point(aes(size = num_trans), colour="#6099DF") +
+  geom_mark_ellipse(aes(group = country_name, label = country_name), color = "#E799BF",
+                    data = filter(drop_na(by_city), country_name == "United States"),
+                    label.colour = "#6099DF", expand = unit(1, "mm"),
+                    con.colour = "#E799BF") + 
+  scale_size_binned("Number of transit systems", breaks = c(5, 10, 20)) +
+  gghighlight(country_name == "United States") +
+  geom_text_repel(aes(label = city),
+                  min.segment.length = 0,
+                  box.padding = 0.18) +
+  scale_x_log10(limits=c(NA,200)) +
+  scale_y_log10(labels = scales::dollar) +
+  theme_minimal(base_size = 14) +
+  labs(title = "Longer transit systems tend to cost more",
+         caption = "Note the axes are on the log scale",
+         x = "Average length",
+         y = "Average cost") +
+  theme(plot.title.position = "plot",
+        axis.title.y = element_text(size = 13),
+        axis.title.x = element_text(size = 13),
+        legend.position = "bottom"
+        ) 
+```
 
 
 # Part 5
