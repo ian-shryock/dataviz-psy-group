@@ -23,6 +23,9 @@ library(tidyverse)
 library(stringr)
 library(here)
 library(sf)
+#install.packages("albersusa")
+#library(albersusa)
+#this is not actually working for me still, FYI
 datasets <- data.frame(names = edld652::list_datasets())
 fiscal_names <- datasets %>% filter(str_detect(names, "CCD_fiscal"))
 
@@ -105,8 +108,10 @@ dis_state_sums <- dis_dat %>%
 
 dis_state_sums %>% 
   ggplot(.,aes(fct_reorder(STATENAME, idea_tot), idea_tot))+
-  geom_col(fill = "cornflowerblue", alpha = .9)+
-  coord_flip() +
+#  geom_col(fill = "cornflowerblue", alpha = .9)+
+# trying this with a different fill and width
+    geom_col(aes(fill=STATENAME,width=.8,alpha=.9))+
+    coord_flip() +
   labs(
     title = "Students with Disabilities by State",
     x = "State", 
@@ -116,7 +121,8 @@ dis_state_sums %>%
   theme(plot.title.position = "plot",
         panel.grid.major.y = element_blank(),
         panel.grid.major.x = element_line(color = "#A9A9A9", size = .6),
-        panel.grid.minor.x = element_blank())  
+        panel.grid.minor.x = element_blank(),
+        legend.position = )  
 
 ```
 
@@ -234,14 +240,16 @@ fiscal_acgr2 %>% ggplot(., aes(x=StateSpedPerStudent, y=reorder(STNAME, StateSpe
 
 fiscal_acgr1 %>% filter(abs(scale(SpedPerStudent))<=1.96) %>% 
 ggplot(., aes(x=SpedPerStudent, y=numCWDGradRate-numTotalGradRate)) +
-  geom_point(size=2, shape=23)+
+# adding some color here, not sure what the original purpose of the graph is - here the colors vary based on the ALL_RATE
+  geom_point(aes(fill = ALL_RATE),size=2, shape=23)+
   geom_smooth(method=lm, se=TRUE)+
   labs(
     title = "Difference in Graduation Rates of CWD - Non-CWD vs Avg Sped Revenue per CWD Student",
     x = "Avg. Sped Revenue", 
     y="Difference in Graduaion Rate, CWD-Non-CWD"
   )+
-  theme_minimal()
+  theme_minimal()+
+  theme(legend.position="none")
 
 
 ```
