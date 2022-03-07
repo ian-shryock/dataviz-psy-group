@@ -932,16 +932,12 @@ Futing
 Row {.tabset data-height=`r data_height`}
 -------------------------------------
 
-Visualization 1
+Student with Disability Rates by State
 
 ### Old
 
 ```{r fig.width=my_width, fig.height=my_height}
 FZPlot1_old
-
-FZPlot2_old
-
-FZPlot3_old
 ```
 <br>
 Initially, I wanted to display the disability rates, the sped revenue per student, and difference in CWD/Non-CWD grad rates on maps. Pretty straightforward already, but I need some basic information from this.
@@ -950,15 +946,48 @@ Initially, I wanted to display the disability rates, the sped revenue per studen
 
 ```{r fig.width=my_width, fig.height=my_height}
 FZPlot1
-
-FZPlot2
-
-FZPlot3
 ```
 <br>
 I decided to use interactive maps to visualize those data, so I can at least also get the name of each state and the exact value in this heatmap for each state.
 
+Row {.tabset data-height=`r data_height`}
+-------------------------------------
 
+SpEd Revenue per Student by State
+
+### Old
+
+```{r fig.width=my_width, fig.height=my_height}
+FZPlot2_old
+```
+
+
+### New
+
+```{r fig.width=my_width, fig.height=my_height}
+FZPlot2
+```
+<br>
+Washington State has the highest average revenue in SpEd.
+
+Row {.tabset data-height=`r data_height`}
+-------------------------------------
+
+Difference in Non-CWD/CWD Grad Rates by State
+
+### Old
+
+```{r fig.width=my_width, fig.height=my_height}
+FZPlot3_old
+```
+
+### New
+
+```{r fig.width=my_width, fig.height=my_height}
+FZPlot3
+```
+<br>
+Mississippi and Louisianan have the largest differences in Non-CWD/CWD Grad Rates
 
 Dillon 
 =====================================  
