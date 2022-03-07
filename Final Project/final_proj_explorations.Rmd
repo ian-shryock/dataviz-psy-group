@@ -2,12 +2,35 @@
 title: "proposal_explorations"
 author: "Ian, Dillon, Futing"
 date: "1/19/2022"
-output: html_document
+output:
+  flexdashboard::flex_dashboard:
+    theme: flatly
+    social: menu
+    orientation: columns
+    vertical_layout: fill
+  html_document:
+    df_print: paged
 ---
 
-```{r InitialSetup}
+<style>                     
+.navbar {
+  background-color:#003D79;
+  border-color:white;
+}
+.navbar-brand {
+color:white!important;
+}
+</style>   
+
+<style type="text/css">
+
+.chart-title {  /* chart_title  */
+   font-size: 15px
+
+</style>
+
+```{r InitialSetup, include = FALSE}
 # remotes::install_github("datalorax/edld652")
-# library(edld652)
 # 
 # 
 # install.packages("usethis")
@@ -15,15 +38,18 @@ output: html_document
 # list_datasets()
 # 
 # unlink(file.path("~",".Renviron"))
+#knitr::opts_chunk$set(cache = TRUE)
 ```
 
 
-```{r}
+```{r, include = FALSE}
 library(tidyverse)
 library(stringr)
 library(here)
 library(sf)
 library(ggpubr)
+library(flexdashboard)
+library(edld652)
 datasets <- data.frame(names = edld652::list_datasets())
 fiscal_names <- datasets %>% filter(str_detect(names, "CCD_fiscal"))
 
@@ -49,8 +75,7 @@ acgr_lea <- get_data("EDFacts_acgr_lea_2011_2019")
 acgr_sch <- get_data("EDFacts_acgr_sch_2011_2019")
 ```
 
-# Revenue By State
-```{r}
+```{r, include = FALSE}
 
 raw_fiscal_17 <- raw_fisc_2017 %>% 
   select(FIPST, LEAID, TOTALREV) %>% 
@@ -96,8 +121,8 @@ state_fisc_sums %>%
         panel.grid.minor.x = element_blank())  ## something appears to be going on with hawaii...
 ```
 
-# Disabilities by State
-```{r}
+
+```{r, include = FALSE}
 
 dis_state_sums <- dis_dat %>% 
   group_by(STATENAME) %>% 
@@ -121,7 +146,7 @@ dis_state_sums %>%
 
 ```
 
-```{r}
+```{r, include = FALSE}
 dis_dat_sub <- dis_dat %>% 
   select(state_name = STATENAME, LEAID, LEA_NAME, YEAR , IDEA_COUNT) %>% 
   janitor::clean_names()
@@ -137,7 +162,7 @@ fiscal_disability <- left_join(fiscal_temp, dis_dat_sub) %>%
 
 ```
 
-```{r}
+```{r, include = FALSE}
 recode_rates <- function(rawRate){
   numRate <- recode(rawRate, "1"= 1, "2"= 2, "3"= 3, "4"= 4, "5"= 5, "6"= 6, "7"= 7, "8"= 8, "9"= 9, "10"= 10, "11"= 11, "12"= 12, "13"= 13, "14"= 14, "15"= 15, "16"= 16, "17"= 17, "18"= 18, "19"= 19, "20"= 20, "21"= 21, "22"= 22, "23"= 23, "24"= 24, "25"= 25, "26"= 26, "27"= 27, "28"= 28, "29"= 29, "30"= 30, "31"= 31, "32"= 32, "33"= 33, "34"= 34, "35"= 35, "36"= 36, "37"= 37, "38"= 38, "39"= 39, "40"= 40, "41"= 41, "42"= 42, "43"= 43, "44"= 44, "45"= 45, "46"= 46, "47"= 47, "48"= 48, "49"= 49, "50"= 50, "51"= 51, "52"= 52, "53"= 53, "54"= 54, "55"= 55, "56"= 56, "57"= 57, "58"= 58, "59"= 59, "60"= 60, "61"= 61, "62"= 62, "63"= 63, "64"= 64, "65"= 65, "66"= 66, "67"= 67, "68"= 68, "69"= 69, "70"= 70, "71"= 71, "72"= 72, "73"= 73, "74"= 74, "75"= 75, "76"= 76, "77"= 77, "78"= 78, "79"= 79, "80"= 80, "81"= 81, "82"= 82, "83"= 83, "84"= 84, "85"= 85, "86"= 86, "87"= 87, "88"= 88, "89"= 89, "90"= 90, "91"= 91, "92"= 92, "93"= 93, "94"= 94, "95"= 95, "96"= 96, "97"= 97, "98"= 98, "99"= 99, "100"= 100,                                    "70-79" = 74.5,
                                         "40-49"= 44.5,
@@ -180,7 +205,7 @@ recode_rates <- function(rawRate){
 
 ```
 
-```{r DillonOldPlots}
+```{r DillonOldPlots, include = FALSE, cache=TRUE}
 #SpEd spending per student
 fiscal_acgr1 <- inner_join(raw_fisc_2017, acgr_lea, by = "LEAID") %>% mutate(SpedPerStudent=C05+C15/CWD_COHORT) %>%  mutate(PerCWD=CWD_COHORT/ALL_COHORT) %>% select(C05, C15, SpedPerStudent, STNAME, CWD_RATE, CWD_COHORT, LEAID, ALL_COHORT, ALL_RATE, PerCWD) %>% filter(LEAID!="1500030")
 
@@ -280,7 +305,7 @@ stateLevel%>%
   )
 ```
 
-```{r DillonNewDataCleaning}
+```{r DillonNewDataCleaning, include = FALSE, cache=TRUE}
 combined_set <- fiscal_disability %>% filter(year==2017)%>% mutate(numCWDGradRate=recode_rates(CWD_RATE), numTotalGradRate=recode_rates(ALL_RATE)) 
 
 GEPlotSet <- combined_set <- combined_set %>% filter(numCWDGradRate!=9999 & numTotalGradRate!=9999) %>% mutate(CWDGE50 = ifelse(numCWDGradRate>50,1,0))
@@ -299,7 +324,7 @@ combinedStateLevel <- combinedStateLevel %>% mutate(CWD_NONGRAD_COHORT = CWD_COH
 ```
 
 
-```{r DillonNewPlots}
+```{r DillonNewPlots, include = FALSE, cache=TRUE}
 DWPlot1 <-  GEPlotSet %>% filter(SpedPerStudent>=quantile(.$SpedPerStudent, .02, na.rm = TRUE) & SpedPerStudent<=quantile(.$SpedPerStudent, .98, na.rm = TRUE)) %>%ggplot(., aes(x=SpedPerStudent/1000, y=CWDGE50)) + 
   geom_point(alpha=.5) +
   stat_smooth(method="glm", se=TRUE, method.args = list(family=binomial)) + 
@@ -412,7 +437,7 @@ DWPlot9
 DWPlot10
 ```
 
-```{r}
+```{r, include = FALSE}
 library(albersusa)
 library(colorspace)
 us <- usa_sf()
@@ -464,8 +489,8 @@ ggplot(stateLevel_geo) +
 ```
 
 
-# County Level Data Prep
-```{r}
+
+```{r, include = FALSE}
 library(edbuildmapr)
 
 sd17 <- sd_shapepull(data_year = "2017", with_data = TRUE)
@@ -507,8 +532,7 @@ county_map <- merge(county_sums, county, by = c("County", "state_name"), all = F
 ```
 
 
-# Bad County Level Plots
-```{r}
+```{r, include = FALSE}
 
 #this is ugly - some of these numbers are impossibly high...need to recheck calculations
 county_map %>% 
@@ -560,8 +584,8 @@ county_map %>%
 
 ```
 
-# District Level Plots
-```{r}
+
+```{r, include = FALSE}
 
 ore_district <- district_geo %>% 
   filter(state_name=="Oregon") %>% 
