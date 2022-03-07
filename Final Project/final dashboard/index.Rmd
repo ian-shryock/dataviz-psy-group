@@ -1,0 +1,1032 @@
+---
+title: "proposal_explorations"
+author: "Ian, Dillon, Futing"
+date: "1/19/2022"
+output:
+  flexdashboard::flex_dashboard:
+    theme: flatly
+    social: menu
+    orientation: rows
+    vertical_layout: scroll
+  html_document:
+    df_print: paged
+---
+
+<style>                     
+.navbar {
+  background-color:#003D79;
+  border-color:white;
+}
+.navbar-brand {
+color:white!important;
+}
+</style>   
+
+<style type="text/css">
+
+.chart-title {  /* chart_title  */
+   font-size: 15px
+
+</style>
+
+```{r InitialSetup, include = FALSE}
+# remotes::install_github("datalorax/edld652")
+# 
+# 
+# install.packages("usethis")
+# usethis::edit_r_environ()
+# list_datasets()
+# 
+# unlink(file.path("~",".Renviron"))
+#knitr::opts_chunk$set(cache = TRUE)
+library(edld652)
+```
+
+
+```{r, include = FALSE}
+library(tidyverse)
+library(stringr)
+library(here)
+library(sf)
+library(ggpubr)
+library(flexdashboard)
+library(edld652)
+
+my_width <- 5
+my_height<- 4
+data_height <-  600
+newPlot <- mtcars %>% ggplot(., aes(x=disp, y=hp)) +
+  geom_point(size=2, shape=23)+
+  geom_smooth(method=lm, se=FALSE)
+
+datasets <- data.frame(names = edld652::list_datasets())
+fiscal_names <- datasets %>% filter(str_detect(names, "CCD_fiscal"))
+
+dis_dat <- get_data("NCES_CCD_nonfiscal_district_2017_2021_disabilities")
+
+#fisc_dat <-  lapply(fiscal_names, get_data) # apparently not all of the fiscal datasets have the same number of variables...
+#fisc_dat2 <- do.call(rbind, fisc_2)
+
+raw_fisc_2017 <- get_data("NCES_CCD_fiscal_district_2017") # 2017 should be a good proxy for what we care about
+raw_fisc_2018 <- get_data("NCES_CCD_fiscal_district_2018") 
+raw_fisc_2018 <- raw_fisc_2018 %>% 
+  select(-CE3, -FL_CE3)
+fiscal <- rbind(raw_fisc_2017, raw_fisc_2018)
+
+
+raw_fisc_2018 <- get_data("NCES_CCD_fiscal_district_2018") 
+raw_fisc_2018 <- get_data("NCES_CCD_fiscal_district_2018") 
+
+state_info <- readr::read_csv("https://github.com/kjhealy/fips-codes/raw/master/state_fips_master.csv")
+
+
+acgr_lea <- get_data("EDFacts_acgr_lea_2011_2019")
+acgr_sch <- get_data("EDFacts_acgr_sch_2011_2019")
+```
+
+```{r, include = FALSE}
+
+raw_fiscal_17 <- raw_fisc_2017 %>% 
+  select(FIPST, LEAID, TOTALREV) %>% 
+  mutate(fips = as.numeric(FIPST))
+
+
+fiscal_sub <- fiscal %>% 
+  select(FIPST, LEAID, TOTALREV, sped_rev_st = C05, idea_rev_fed = C15) %>% 
+  mutate(fips = as.numeric(FIPST))
+
+state_fiscal_17 <- full_join(raw_fiscal_17, state_info)
+state_fiscal <- full_join(fiscal_sub, state_info)
+
+
+
+state_fisc_sums <- state_fiscal %>% 
+  group_by(state_name) %>% 
+  summarize(min_idea_rev_fed = min(idea_rev_fed), 
+            max_idea_rev_fed = max(idea_rev_fed), 
+            mean_idea_rev_fed = mean(idea_rev_fed), 
+            median_idea_rev_fed = median(idea_rev_fed), 
+            min_sped_rev_st = min(sped_rev_st), 
+            max_sped_rev_st = max(sped_rev_st), 
+            mean_sped_rev_st = mean(sped_rev_st), 
+            median_sped_rev_st = median(sped_rev_st) 
+            ) 
+
+
+
+state_fisc_sums %>% 
+  ggplot(.,aes(fct_reorder(state_name, mean_sped_rev_st), mean_sped_rev_st))+
+  geom_col(fill = "cornflowerblue", alpha = .9)+
+  coord_flip() +
+  labs(
+    title = "Revenue by State",
+    x = "State", 
+    y="Revenue"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(plot.title.position = "plot",
+        panel.grid.major.y = element_blank(),
+        panel.grid.major.x = element_line(color = "#A9A9A9", size = .6),
+        panel.grid.minor.x = element_blank())  ## something appears to be going on with hawaii...
+```
+
+
+```{r, include = FALSE}
+
+dis_state_sums <- dis_dat %>% 
+  group_by(STATENAME) %>% 
+  summarize(idea_tot = sum(IDEA_COUNT, na.rm = TRUE))
+
+
+dis_state_sums %>% 
+  ggplot(.,aes(fct_reorder(STATENAME, idea_tot), idea_tot))+
+  geom_col(fill = "cornflowerblue", alpha = .9)+
+  coord_flip() +
+  labs(
+    title = "Students with Disabilities by State",
+    x = "State", 
+    y="Students with Disabilities"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(plot.title.position = "plot",
+        panel.grid.major.y = element_blank(),
+        panel.grid.major.x = element_line(color = "#A9A9A9", size = .6),
+        panel.grid.minor.x = element_blank())  
+
+```
+
+```{r, include = FALSE}
+dis_dat_sub <- dis_dat %>% 
+  select(state_name = STATENAME, LEAID, LEA_NAME, YEAR , IDEA_COUNT) %>% 
+  janitor::clean_names()
+dis_dat_sub$state_name <- str_to_title(dis_dat_sub$state_name)
+fiscal_temp <- left_join(raw_fisc_2017, acgr_lea, by = "LEAID") %>% 
+   select(leaid = LEAID, state_sped_rev = C05, fed_sped_rev = C15, STNAME, 
+         LEAID, ALL_COHORT, CWD_COHORT, ALL_RATE, CWD_RATE)
+  
+fiscal_disability <- left_join(fiscal_temp, dis_dat_sub) %>% 
+  rowwise() %>% 
+  mutate(tot_sped_rev = sum(c_across(state_sped_rev:fed_sped_rev), na.rm = TRUE), 
+         SpedPerStudent = tot_sped_rev/idea_count)
+
+#SpEd spending per student
+fiscal_acgr1 <- left_join(raw_fisc_2017, acgr_lea, by = "LEAID") %>% mutate(SpedPerStudent=(C05+C15)/CWD_COHORT) %>%  mutate(PerCWD=CWD_COHORT/ALL_COHORT) %>% select(C05, C15, SpedPerStudent, STNAME, CWD_RATE, CWD_COHORT, LEAID, ALL_COHORT, ALL_RATE, PerCWD) %>% filter(LEAID!="1500030")
+
+```
+
+```{r, include = FALSE}
+recode_rates <- function(rawRate){
+  numRate <- recode(rawRate, "1"= 1, "2"= 2, "3"= 3, "4"= 4, "5"= 5, "6"= 6, "7"= 7, "8"= 8, "9"= 9, "10"= 10, "11"= 11, "12"= 12, "13"= 13, "14"= 14, "15"= 15, "16"= 16, "17"= 17, "18"= 18, "19"= 19, "20"= 20, "21"= 21, "22"= 22, "23"= 23, "24"= 24, "25"= 25, "26"= 26, "27"= 27, "28"= 28, "29"= 29, "30"= 30, "31"= 31, "32"= 32, "33"= 33, "34"= 34, "35"= 35, "36"= 36, "37"= 37, "38"= 38, "39"= 39, "40"= 40, "41"= 41, "42"= 42, "43"= 43, "44"= 44, "45"= 45, "46"= 46, "47"= 47, "48"= 48, "49"= 49, "50"= 50, "51"= 51, "52"= 52, "53"= 53, "54"= 54, "55"= 55, "56"= 56, "57"= 57, "58"= 58, "59"= 59, "60"= 60, "61"= 61, "62"= 62, "63"= 63, "64"= 64, "65"= 65, "66"= 66, "67"= 67, "68"= 68, "69"= 69, "70"= 70, "71"= 71, "72"= 72, "73"= 73, "74"= 74, "75"= 75, "76"= 76, "77"= 77, "78"= 78, "79"= 79, "80"= 80, "81"= 81, "82"= 82, "83"= 83, "84"= 84, "85"= 85, "86"= 86, "87"= 87, "88"= 88, "89"= 89, "90"= 90, "91"= 91, "92"= 92, "93"= 93, "94"= 94, "95"= 95, "96"= 96, "97"= 97, "98"= 98, "99"= 99, "100"= 100,                                    "70-79" = 74.5,
+                                        "40-49"= 44.5,
+                                        "60-69"= 64.5,
+                                        "60-79"= 69.5,
+                                        "50-59"= 54.5,
+                                        "LE5"= 2.5,
+                                        "10-14"= 12,
+                                        "60-64"= 62,
+                                        "21-39"= 30,
+                                        "30-39"= 34.5,
+                                        "55-59"= 57,
+                                        "LE10"= 5,
+                                        "35-39"= 37,
+                                        "40-44"= 42,
+                                        "40-59"= 49.5,
+                                        "50-54"= 52,
+                                        "20-24"= 22,
+                                        "15-19"= 17,
+                                        "6-9"= 7.5,
+                                        "11-19"= 15,
+                                        "80-89"= 84.5,
+                                        "70-74"= 72,
+                                        "65-69"= 67,
+                                        "75-79"= 77,
+                                        "80-84"= 82,
+                                        "85-89"= 87,
+                                        "45-49"= 47,
+                                        "90-94"= 92,
+                                        "25-29"= 27,
+                                        "GE90"= 95,
+                                        "GE95"= 97.5,
+                                        "20-29"= 24.5,
+                                        "30-34"= 32,
+                                        "GE50"= 200,
+                                        "LT50" = -200,
+                                        .default = 9999)
+  return(numRate)
+}
+
+```
+
+```{r DillonOldPlots, include = FALSE, cache=TRUE}
+#SpEd spending per student
+fiscal_acgr1 <- inner_join(raw_fisc_2017, acgr_lea, by = "LEAID") %>% mutate(SpedPerStudent=C05+C15/CWD_COHORT) %>%  mutate(PerCWD=CWD_COHORT/ALL_COHORT) %>% select(C05, C15, SpedPerStudent, STNAME, CWD_RATE, CWD_COHORT, LEAID, ALL_COHORT, ALL_RATE, PerCWD) %>% filter(LEAID!="1500030")
+
+fiscal_acgr1 <- fiscal_acgr1 %>% mutate(numCWDGradRate=recode_rates(CWD_RATE)) %>% filter(CWD_RATE<999)
+
+fiscal_acgr1 <- fiscal_acgr1 %>% mutate(numTotalGradRate=recode_rates(ALL_RATE)) %>% filter(ALL_RATE<999)
+
+fiscal_acgr1 <- fiscal_acgr1 %>% mutate(GE50 = case_when(numCWDGradRate>50 | numCWDGradRate=="GE50" ~ 1, numCWDGradRate<50 | numCWDGradRate=="LT50"~0))
+
+
+fiscal_acgr1 %>%  filter(abs(scale(SpedPerStudent))<=1.65) %>%ggplot(., aes(x=SpedPerStudent, y=GE50)) + 
+  geom_point(alpha=.5) +
+  stat_smooth(method="glm", se=TRUE, method.args = list(family=binomial)) + 
+  labs(
+    title = "Likelihood of a >50% CWD Cohort Graduation Rate vs Sped Revenue per Student",
+    x = "Avg. Sped Revenue", 
+    y="Likelihood"
+  )+
+  theme_minimal()
+
+
+
+fiscal_acgr1 <- fiscal_acgr1 %>% filter(!is.na(numTotalGradRate))
+fiscal_acgr1 <- fiscal_acgr1 %>% filter(!is.na(numCWDGradRate))
+fiscal_acgr1 <- fiscal_acgr1 %>% mutate(CWD_GRAD_COHORT= numCWDGradRate*CWD_COHORT*.01, NONCWD_GRAD_COHORT= (numTotalGradRate*ALL_COHORT*.01)-(numCWDGradRate*CWD_COHORT*.01))
+
+stateLevel <- fiscal_acgr1 %>% group_by(STNAME) %>% summarize(CWD_COHORT=mean(CWD_COHORT, na.rm=TRUE), ALL_COHORT=mean(ALL_COHORT), SpedRev=mean(C05+C15, na.rm=TRUE), NONCWD_GRAD_COHORT=mean(NONCWD_GRAD_COHORT), CWD_GRAD_COHORT=mean(CWD_GRAD_COHORT)) %>% mutate(CWD_RATE=CWD_COHORT/ALL_COHORT) %>% mutate(nonCWD=ALL_COHORT-CWD_COHORT) %>% mutate(SpedPerStudent=SpedRev/CWD_COHORT, CWD_GRAD_RATE = CWD_GRAD_COHORT/CWD_COHORT, NON_CWD_GRAD_RATE=NONCWD_GRAD_COHORT/(ALL_COHORT-CWD_COHORT))
+
+
+fiscal_acgr2 <-fiscal_acgr1%>% filter(is.numeric(SpedPerStudent))%>% filter(!is.na(SpedPerStudent)) %>% filter(SpedPerStudent>10) %>% group_by(STNAME) %>% summarize(StateSpedPerStudent=mean(SpedPerStudent))
+
+
+
+fiscal_acgr2 %>% ggplot(., aes(x=StateSpedPerStudent, y=reorder(STNAME, StateSpedPerStudent))) +
+  geom_point(size=2, shape=23)+
+  geom_smooth(method=lm, se=FALSE)+
+  labs(
+    title = "State Avg Sped Revenue per CWD Student",
+    x = "Avg. Sped Revenue", 
+    y="State"
+  )+
+  theme_minimal()
+
+
+DWOldPlot1 <- fiscal_acgr1 %>% filter(abs(scale(SpedPerStudent))<=1.96) %>% 
+ggplot(., aes(x=SpedPerStudent, y=numCWDGradRate-numTotalGradRate)) +
+  geom_point(size=2, shape=23)+
+  geom_smooth(method=lm, se=TRUE)+
+  labs(
+    title = "Difference in Graduation Rates of CWD - Non-CWD vs Avg Sped Revenue per CWD Student",
+    x = "Avg. Sped Revenue", 
+    y="Difference in Graduaion Rate, CWD-Non-CWD"
+  )+
+  theme_minimal()
+DWOldPlot1
+
+stateLevel2 <- stateLevel %>% pivot_longer(., cols=c("nonCWD","CWD_COHORT"), values_to="count")
+
+ DWOldPlot3 <- stateLevel2%>% 
+   ggplot(.,aes(x=reorder(STNAME, count), y=count, fill = name))+
+  geom_col(position = "stack")+
+  coord_flip() +
+  labs(
+    title = "Students with and without Disabilities by State",
+    x = "State", 
+    y="Students with Disabilities"
+  )
+ 
+stateLevel%>% 
+   ggplot(.,aes(x=reorder(STNAME,CWD_RATE), y=CWD_RATE))+
+  geom_col(position = "stack")+
+  coord_flip() +
+  labs(
+    title = "Students with Disability Rates by State",
+    x = "State", 
+    y="Percent of Students with Disabilities"
+  )
+
+stateLevel%>% 
+   ggplot(.,aes(x=reorder(STNAME,CWD_RATE), y=SpedPerStudent))+
+  geom_col(position = "stack")+
+  coord_flip() +
+  labs(
+    title = "SpEd Revenue per Student by State",
+    x = "States in Order of Disability Rates, Descending", 
+    y="Avg Special Ed Revenue per Student"
+  )
+
+DWOldPlot2 <- stateLevel%>% 
+   ggplot(.,aes(x=reorder(STNAME,CWD_GRAD_RATE-NON_CWD_GRAD_RATE), y=CWD_GRAD_RATE-NON_CWD_GRAD_RATE))+
+  geom_col(position = "stack")+
+  coord_flip() +
+  labs(
+    title = "Differences in CWD/Non-CWD Grad Rates by State",
+    x = "State in Order of Disability Rates, Descending", 
+    y="Differences in Grad Rates, Disability minus No Disabilties"
+  )
+
+DWOldPlot1
+DWOldPlot2
+DWOldPlot3
+```
+
+```{r DillonNewDataCleaning, include = FALSE, cache=TRUE}
+combined_set <- fiscal_disability %>% filter(year==2017)%>% mutate(numCWDGradRate=recode_rates(CWD_RATE), numTotalGradRate=recode_rates(ALL_RATE)) 
+
+GEPlotSet <- combined_set <- combined_set %>% filter(numCWDGradRate!=9999 & numTotalGradRate!=9999) %>% mutate(CWDGE50 = ifelse(numCWDGradRate>50,1,0))
+
+combined_set <- combined_set %>% filter(numCWDGradRate!=9999 & numTotalGradRate!=9999) %>% mutate(CWDGE50 = ifelse(numCWDGradRate>50,1,0))%>% filter(numCWDGradRate>=0 & numCWDGradRate<=100 & numCWDGradRate>=0 & numCWDGradRate<=100) %>% mutate(rateDiff = numCWDGradRate-numTotalGradRate)
+
+#combined_set2 <- combined_set %>% mutate(rateDiff = numCWDGradRate-numTotalGradRate) %>% filter(SpedPerStudent>=quantile(.$SpedPerStudent, .02, na.rm = TRUE) & SpedPerStudent<=quantile(.$SpedPerStudent, .98, na.rm = TRUE))
+
+
+combined_set <- combined_set %>% mutate(CWD_GRAD_COHORT= numCWDGradRate*CWD_COHORT*.01, NONCWD_GRAD_COHORT= (numTotalGradRate*ALL_COHORT*.01)-(numCWDGradRate*CWD_COHORT*.01))
+
+
+combinedStateLevel <- combined_set %>% group_by(STNAME) %>% summarize(CWD_COHORT=sum(CWD_COHORT, na.rm=TRUE), ALL_COHORT=sum(ALL_COHORT), SpedRev=sum(state_sped_rev+fed_sped_rev, na.rm=TRUE), IdeaCount=sum(idea_count, na.rm=TRUE), NONCWD_GRAD_COHORT=sum(NONCWD_GRAD_COHORT), CWD_GRAD_COHORT=sum(CWD_GRAD_COHORT)) %>% mutate(CWD_RATE=CWD_COHORT/ALL_COHORT) %>% mutate(nonCWD=ALL_COHORT-CWD_COHORT) %>% mutate(SpedPerStudent=SpedRev/IdeaCount, CWD_GRAD_RATE = CWD_GRAD_COHORT/CWD_COHORT, NON_CWD_GRAD_RATE=NONCWD_GRAD_COHORT/(ALL_COHORT-CWD_COHORT))
+
+combinedStateLevel <- combinedStateLevel %>% mutate(CWD_NONGRAD_COHORT = CWD_COHORT*(1-CWD_GRAD_RATE), NONCWD_NONGRAD_COHORT = (ALL_COHORT-CWD_COHORT)*(1-NON_CWD_GRAD_RATE))
+```
+
+
+```{r DillonNewPlots, include = FALSE, cache=TRUE}
+DWPlot1 <-  GEPlotSet %>% filter(SpedPerStudent>=quantile(.$SpedPerStudent, .02, na.rm = TRUE) & SpedPerStudent<=quantile(.$SpedPerStudent, .98, na.rm = TRUE)) %>%ggplot(., aes(x=SpedPerStudent/1000, y=CWDGE50)) + 
+  geom_point(alpha=.5) +
+  stat_smooth(method="glm", se=TRUE, method.args = list(family=binomial)) + 
+  labs(
+    title = "Likelihood of a >50% CWD Cohort Graduation Rate vs Sped Revenue per Student",
+    x = "Sped Revenue per Student (by $1000s)", 
+    y="Likelihood"
+  )+
+  theme_minimal()
+
+DWPlot2 <-  combinedStateLevel %>% filter(STNAME!="Colorado") %>% ggplot(., aes(x=SpedPerStudent, y=reorder(STNAME, SpedPerStudent))) +
+  geom_point(size=2, shape=23)+
+  geom_smooth(method=lm, se=FALSE)+
+  labs(
+    title = "State Avg Sped Revenue per CWD Student",
+    x = "Avg. Sped Revenue", 
+    y="State"
+  )+
+  theme_minimal()
+
+
+DWPlot3 <-  combined_set %>% filter(SpedPerStudent>=quantile(.$SpedPerStudent, .02, na.rm = TRUE) & SpedPerStudent<=quantile(.$SpedPerStudent, .98, na.rm = TRUE)) %>% 
+ggplot(., aes(x=SpedPerStudent, y=numCWDGradRate-numTotalGradRate)) +
+  geom_point(size=2, shape=23)+
+  geom_smooth(method=lm, se=TRUE)+
+  labs(
+    title = "Difference in Graduation Rates of CWD - Non-CWD vs Avg Sped Revenue per CWD Student",
+    x = "Avg. Sped Revenue", 
+    y="Difference in Graduaion Rate, CWD-Non-CWD"
+  )+
+  theme_minimal()
+
+DWPlot4 <-  combined_set %>% filter(SpedPerStudent>=quantile(.$SpedPerStudent, .02, na.rm = TRUE) & SpedPerStudent<=quantile(.$SpedPerStudent, .98, na.rm = TRUE)) %>% 
+ggplot(., aes(x=(SpedPerStudent/1000), y=numCWDGradRate)) +
+  geom_point(size=1.5, shape=23, alpha = .7, color = "cyan3")+
+  geom_smooth(method=lm, se=TRUE, size = 2, color = "black")+
+  stat_regline_equation(label.y = 63, label.x = 13, aes(label = ..eq.label..)) +
+  stat_regline_equation(label.y = 58, label.x = 13, aes(label = ..rr.label..))+
+  labs(
+    title = "CWD Graduation Rates vs Sped Revenue per CWD Student",
+    x = "Sped Revenue (per $1000)/Child with Disabilities", 
+    y="CWD Grad Rate"
+  )+
+  theme_minimal()
+
+summary(lm(numCWDGradRate~SpedPerStudent, data = combined_set))
+
+combinedStateLevel2 <- combinedStateLevel %>% pivot_longer(., cols=c("nonCWD","CWD_COHORT","CWD_NONGRAD_COHORT", "NONCWD_NONGRAD_COHORT", "CWD_GRAD_COHORT", "NONCWD_GRAD_COHORT"), values_to="count")%>% mutate(count = ifelse(name=="CWD_NONGRAD_COHORT",count*-1,count ))
+
+DWPlot6 <- combinedStateLevel %>% pivot_longer(., cols=c("nonCWD","CWD_COHORT","CWD_NONGRAD_COHORT", "NONCWD_NONGRAD_COHORT", "CWD_GRAD_COHORT", "NONCWD_GRAD_COHORT"), values_to="count")%>% filter(name %in% c("nonCWD","CWD_COHORT")) %>% filter(STNAME %in% c("California","Texas","Florida","New York","Pennsylvania","Illinois","Ohio","Georgia","North Carolina","Michigan")) %>%
+   ggplot(.,aes(x=reorder(STNAME, count), y=count, fill = name))+
+  scale_fill_discrete(name = "Disability Status", labels = c("Students with Disabilities","Students without Disabilities"))+
+  geom_col(position = "stack")+
+  coord_flip() +
+  labs(
+    title = "Students Disability Count by State",
+    x = "State", 
+    y="Students with Disabilities"
+  )
+ 
+DWPlot7 <-  combinedStateLevel%>% 
+   ggplot(.,aes(x=reorder(STNAME,CWD_RATE), y=CWD_RATE))+
+  geom_col(position = "stack")+
+  coord_flip() +
+  labs(
+    title = "Students with Disability Rates by State",
+    x = "State", 
+    y="Percent of Students with Disabilities"
+  )
+
+DWPlot8 <-  combinedStateLevel%>% 
+   ggplot(.,aes(x=reorder(STNAME,CWD_RATE), y=SpedPerStudent))+
+  geom_col(position = "stack")+
+  coord_flip() +
+  labs(
+    title = "SpEd Revenue per Student by State",
+    x = "States in Order of Disability Rates, Descending", 
+    y="Special Ed Revenue per Student"
+  )
+
+DWPlot9 <-  combinedStateLevel%>% filter(STNAME %in% c("California","Texas","Florida","New York","Pennsylvania","Illinois","Ohio","Georgia","North Carolina","Michigan")) %>%
+   ggplot(.,aes(x=reorder(STNAME,CWD_GRAD_RATE-NON_CWD_GRAD_RATE), y=(CWD_GRAD_RATE-NON_CWD_GRAD_RATE)*100))+
+  geom_col(position = "stack", fill = "red4")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12)) +
+  #coord_flip() +
+  labs(
+    title = "CWD minus Non-CWD Graduation Rate",
+    x = "States", 
+    y="Differences in Graduation % (Disability - No Disabilties)"
+  )
+
+
+DWPlot10 <-  combinedStateLevel %>% pivot_longer(., cols=c("nonCWD","CWD_COHORT","CWD_NONGRAD_COHORT", "NONCWD_NONGRAD_COHORT", "CWD_GRAD_COHORT", "NONCWD_GRAD_COHORT"), values_to="count")%>% filter(name %in% c("CWD_GRAD_COHORT","CWD_NONGRAD_COHORT")) %>% filter(STNAME %in% c("California","Texas","Florida","New York","Pennsylvania","Illinois","Ohio","Georgia","North Carolina","Michigan")) %>% mutate(count = ifelse(name=="CWD_NONGRAD_COHORT",count*-1,count ))%>% 
+   ggplot(.,aes(x=reorder(STNAME, CWD_GRAD_RATE), y=count, fill = name))+
+  geom_bar(stat = "identity")+
+  scale_y_continuous(breaks = seq(-20000, 50000, 10000),
+                     labels = c(seq(20000, 0, -10000), seq(10000, 50000, 10000)))+
+  scale_fill_manual(name = "Graduation Status", labels = c("Graduated","Didn't Graduate"), values = c("green4","red3"))+
+  coord_flip() +
+  labs(
+    title = "CWD students graduation by state",
+    x = "States by CWD graduation %, descending", 
+    y="Number of CWD Students"
+  )+
+  theme_minimal()
+
+
+
+DWPlot4
+DWPlot9
+DWPlot10
+```
+
+```{r FutingOldPlots, include = FALSE}
+library(albersusa)
+library(colorspace)
+us <- usa_sf()
+stateLevel_subset <- stateLevel %>%
+  select("name"="STNAME", CWD_RATE, SpedPerStudent,CWD_GRAD_RATE,NON_CWD_GRAD_RATE)
+
+stateLevel_geo <- inner_join(us, stateLevel_subset) 
+
+
+FZPlot1_old <- ggplot(stateLevel_geo) +
+  geom_sf(aes(fill=CWD_RATE)) +
+  scale_fill_continuous_sequential(palette = "Heat") + 
+  labs(fill = "Percent of Students with Disabilities",
+       title = "Students with Disability Rates by State") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title.position = "plot",
+        legend.position = "bottom",
+        legend.key.size = unit(1, 'cm'),
+        legend.key.height = unit(.5,"cm"),
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6))
+
+FZPlot2_old <- ggplot(stateLevel_geo) +
+  geom_sf(aes(fill=SpedPerStudent)) +
+  scale_fill_continuous_sequential(palette = "Heat") + 
+  labs(fill = "Avg Special Ed Revenue per Student",
+       title = "SpEd Revenue per Student by State") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title.position = "plot",
+        legend.position = "bottom",
+        legend.key.size = unit(1.2, 'cm'),
+        legend.key.height = unit(.5,"cm"),
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6))
+        
+FZPlot3_old <-ggplot(stateLevel_geo) +
+  geom_sf(aes(fill=CWD_GRAD_RATE-NON_CWD_GRAD_RATE)) +
+  scale_fill_continuous_sequential(palette = "Heat") + 
+  labs(fill = "Differences in Grad Rates\n(Disability - No Disabilties)",
+       title = "Differences in CWD/Non-CWD Grad Rates by State") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title.position = "plot",
+        legend.position = "bottom",
+        legend.key.size = unit(1.2, 'cm'),
+        legend.key.height = unit(.5,"cm"),
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6))
+```
+
+```{r FutingDraftPlots, include = FALSE}
+library(plotly)
+library(maps)
+states_map <- map_data("state")
+stateLevel_subset <- stateLevel %>%
+  select("state"="STNAME", CWD_RATE, SpedPerStudent,
+         CWD_GRAD_RATE, NON_CWD_GRAD_RATE) %>%
+  mutate(state = tolower(state),
+         DIFF_IN_RATE = CWD_GRAD_RATE - NON_CWD_GRAD_RATE)  %>%
+  select(-c(CWD_GRAD_RATE, NON_CWD_GRAD_RATE))
+ggplotly(ggplot(stateLevel_subset, aes(map_id = state)) +
+  geom_map(aes(fill = CWD_RATE), map = states_map) +
+  expand_limits(x = states_map$long, y = states_map$lat) +
+  scale_fill_continuous_sequential(palette = "Heat") + 
+  labs(fill = "Percent of Students with Disabilities",
+       title = "Students with Disability Rates") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(hjust = .5, face = "bold"),
+        legend.position = "bottom",
+        legend.key.size = unit(.8, 'cm'),
+        legend.key.height = unit(.5,"cm"))) 
+full_set <- expand.grid(name = unique(us$name))
+stateLevel_subset <- stateLevel %>%
+  select("name"="STNAME", CWD_RATE, SpedPerStudent,
+         CWD_GRAD_RATE, NON_CWD_GRAD_RATE) %>%
+  mutate(DIFF_IN_RATE = CWD_GRAD_RATE - NON_CWD_GRAD_RATE)  %>%
+  select(-c(CWD_GRAD_RATE, NON_CWD_GRAD_RATE)) %>%
+  rename(Rate = CWD_RATE, Revenue = SpedPerStudent, Difference = DIFF_IN_RATE)
+stateLevel_subset <- left_join(full_set, stateLevel_subset)
+stateLevel_geo <- left_join(us, stateLevel_subset) 
+FZPlot1_test <- ggplot(stateLevel_geo) +
+  geom_sf(aes(fill=Rate)) +
+  scale_fill_continuous_sequential(palette = "Heat",
+                                   na.value = 'grey80') + 
+  labs(fill = "",
+       title = "Students with Disability Rates") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(hjust = .5, face = "bold"),
+        legend.position = "bottom",
+        legend.key.size = unit(.5, 'cm'),
+        legend.key.height = unit(.3,"cm"),
+        axis.text.y = element_blank(),
+        axis.text.x = element_blank())
+FZPlot2_test <- ggplot(stateLevel_geo) +
+  geom_sf(aes(fill=Revenue)) +
+  scale_fill_continuous_sequential(palette = "Heat",
+                                   na.value = 'grey80') + 
+  labs(fill = "",
+       title = "SpEd Revenue per Student") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(hjust = .5, face = "bold"),
+        legend.position = "bottom",
+        legend.key.size = unit(.5, 'cm'),
+        legend.key.height = unit(.3,"cm"),
+        axis.text.y = element_blank(),
+        axis.text.x = element_blank())
+FZPlot3_test <- ggplot(stateLevel_geo) +
+  geom_sf(aes(fill=abs(Difference))) +
+  scale_fill_continuous_sequential(palette = "Heat",
+                                   na.value = 'grey80') + 
+  labs(fill = "",
+       title = "Differences in Grad Rates\nabs(Disability - No Disabilties)") +
+  theme_minimal(base_size = 12) +
+  theme(plot.subtitle = element_text(hjust = .5, face = "bold"),
+        legend.position = "bottom",
+        legend.key.size = unit(.5, 'cm'),
+        legend.key.height = unit(.3,"cm"),
+        axis.text.y = element_blank(),
+        axis.text.x = element_blank())
+ggplotly(FZPlot1_test)
+```
+
+```{r FZNewPlots, include=FALSE}
+df_for_geo <- read.csv("https://raw.githubusercontent.com/plotly/datasets/master/2011_us_ag_exports.csv")
+l <- list(color = toRGB("white"), width = 2)
+g <- list(
+  scope = 'usa',
+  projection = list(type = 'albers usa'),
+  showlakes = TRUE,
+  lakecolor = toRGB('white')
+)
+stateLevel_subset$state <- stateLevel_subset$name
+df_subset <- df_for_geo %>%
+  select(state, code)
+stateLevel_geo <- left_join(df_subset, stateLevel_subset)
+FZPlot1 <- plot_geo(stateLevel_geo, locationmode = 'USA-states') %>% 
+  add_trace(
+    z = ~Rate, text = ~state, locations = ~code, 
+    color = ~Rate, colors = 'Purples'
+  ) %>% 
+  colorbar(title = "Percent of Students with Disabilities",
+           y = 0.75) %>% 
+  layout(
+    title = list(text = '<b> Students with Disability Rates <b>'),
+    y = 0.5,
+    geo = g
+  )
+FZPlot2 <- plot_geo(stateLevel_geo, locationmode = 'USA-states') %>% 
+  add_trace(
+    z = ~Revenue, text = ~state, locations = ~code, 
+    color = ~Revenue, colors = 'Purples'
+  ) %>% 
+  colorbar(title = "Avg Special Ed Revenue per Student",
+           orientation = "h",
+           y = 0.75) %>% 
+  layout(
+    title = list(text = '<b> SpEd Revenue per Student <b>'),
+    y = 0.5,
+    geo = g
+  )
+FZPlot3 <- plot_geo(stateLevel_geo, locationmode = 'USA-states') %>% 
+  add_trace(
+    z = ~(-Difference), text = ~state, locations = ~code, 
+    color = ~(-Difference), colors = 'Purples'
+  ) %>% 
+  colorbar(title = "Differences in Grad Rates\n(No Disabilties - Disabilities)",
+           orientation = "h",
+           y = 0.75) %>% 
+  layout(
+    title = list(text = '<b> Differences in Non-CWD/CWD Grad Rates <b>'),
+    y = 0.5,
+    geo = g
+  )
+```
+
+
+
+```{r, include = FALSE}
+library(edbuildmapr)
+
+sd17 <- sd_shapepull(data_year = "2017", with_data = TRUE)
+sd17$year <- as.numeric(sd17$year)
+sd17$leaid <- sd17$GEOID
+
+county <- counties_sf() %>% 
+  mutate(County = paste0(name, " ",lsad)) %>% 
+  select(County, geometry, state_name = state)
+
+
+dis_dat_sub <- dis_dat %>% 
+  select(state_name = STATENAME, LEAID, LEA_NAME, YEAR , IDEA_COUNT) %>% 
+  janitor::clean_names()
+dis_dat_sub$state_name <- str_to_title(dis_dat_sub$state_name)
+
+fiscal_temp <- left_join(raw_fisc_2017, acgr_lea, by = "LEAID") %>% 
+  mutate(numCWDGradRate=recode(CWD_RATE,"1"= 1, "2"= 2, "3"= 3, "4"= 4, "5"= 5, 
+                               "6"= 6, "7"= 7, "8"= 8, "9"= 9, "10"= 10, "11"= 11, 
+                               "12"= 12, "13"= 13, "14"= 14, "15"= 15, "16"= 16, 
+                               "17"= 17, "18"= 18, "19"= 19, "20"= 20, "21"= 21, 
+                               "22"= 22, "23"= 23, "24"= 24, "25"= 25, "26"= 26, 
+                               "27"= 27, "28"= 28, "29"= 29, "30"= 30, "31"= 31, 
+                               "32"= 32, "33"= 33, "34"= 34, "35"= 35, "36"= 36, 
+                               "37"= 37, "38"= 38, "39"= 39, "40"= 40, "41"= 41, 
+                               "42"= 42, "43"= 43, "44"= 44, "45"= 45, "46"= 46, 
+                               "47"= 47, "48"= 48, "49"= 49, "50"= 50, "51"= 51, 
+                               "52"= 52, "53"= 53, "54"= 54, "55"= 55, "56"= 56, 
+                               "57"= 57, "58"= 58, "59"= 59, "60"= 60, "61"= 61, 
+                               "62"= 62, "63"= 63, "64"= 64, "65"= 65, "66"= 66, 
+                               "67"= 67, "68"= 68, "69"= 69, "70"= 70, "71"= 71, 
+                               "72"= 72, "73"= 73, "74"= 74, "75"= 75, "76"= 76, 
+                               "77"= 77, "78"= 78, "79"= 79, "80"= 80, "81"= 81, 
+                               "82"= 82, "83"= 83, "84"= 84, "85"= 85, "86"= 86, 
+                               "87"= 87, "88"= 88, "89"= 89, "90"= 90, "91"= 91, 
+                               "92"= 92, "93"= 93, "94"= 94, "95"= 95, "96"= 96, 
+                               "97"= 97, "98"= 98, "99"= 99, "100"= 100,
+                               "70-79" = 74.5, "40-49"= 44.5, "60-69"= 64.5,
+                               "60-79"= 69.5, "50-59"= 54.5, "LE5"= 2.5,
+                               "10-14"= 12, "60-64"= 62, "21-39"= 30,
+                               "30-39"= 34.5, "55-59"= 57, "LE10"= 5,
+                               "35-39"= 37, "40-44"= 42, "40-59"= 49.5,
+                               "50-54"= 52, "20-24"= 22, "15-19"= 17,
+                               "6-9"= 7.5, "11-19"= 15, "80-89"= 84.5,
+                               "70-74"= 72, "65-69"= 67, "75-79"= 77,
+                               "80-84"= 82,"85-89"= 87, "45-49"= 47,
+                               "90-94"= 92, "25-29"= 27, "GE90"= 95,
+                               "GE95"= 97.5, "20-29"= 24.5, "30-34"= 32)) %>% 
+   select(leaid = LEAID, state_sped_rev = C05, fed_sped_rev = C15, STNAME, 
+         LEAID, ALL_COHORT, ALL_RATE, numCWDGradRate, CWD_RATE, CWD_COHORT)
+  
+
+col <- dis_dat_sub %>% filter(state_name =="Colorado")
+col_fisc <- fiscal_temp %>% filter(STNAME == "Colorado")
+colorado <- left_join(col_fisc, col) 
+colorado$lea_name <- str_to_title(colorado$lea_name)
+ 
+colorado2 <- colorado %>% 
+  group_by(lea_name) %>% 
+  mutate(mean_state_sped_rev = mean(state_sped_rev, na.rm = TRUE), 
+            mean_fed_sped_rev = mean(fed_sped_rev, na.rm = TRUE),)
+
+colorado3 <-  colorado2 %>% 
+  rowwise() %>% 
+  mutate(tot_sped_rev = sum(c_across(mean_state_sped_rev:mean_fed_sped_rev), na.rm = TRUE), 
+         SpedPerStudent = tot_sped_rev/(CWD_COHORT*4)) %>% 
+  select(-mean_state_sped_rev, -mean_fed_sped_rev, CWD_COHORT)
+
+
+fiscal_disability <- left_join(fiscal_temp, dis_dat_sub) %>% 
+  rowwise() %>% 
+  mutate(tot_sped_rev = sum(c_across(state_sped_rev:fed_sped_rev), na.rm = TRUE), 
+         SpedPerStudent = tot_sped_rev/idea_count) %>% 
+  filter(leaid!="1500030", idea_count !=3, state_name !="Colorado")
+
+fiscal_disability <- rbind(fiscal_disability, colorado3)
+
+district_geo <- left_join(sd17, fiscal_disability)
+
+
+
+to_sum <- district_geo
+st_geometry(to_sum) <- NULL
+county_sums <- to_sum %>% 
+  group_by(County, state_name) %>% 
+  summarize(mean_sped_stud = mean(SpedPerStudent, na.rm = TRUE), 
+            tot_idea = sum(idea_count), 
+            mean_CWD = mean(numCWDGradRate, na.rm = TRUE))
+
+
+county_map <- merge(county_sums, county, by = c("County", "state_name"), all = F)
+
+
+```
+
+
+```{r, include = FALSE}
+
+#this is ugly - some of these numbers are impossibly high...need to recheck calculations
+ian_old1 <- county_map %>% 
+  filter(mean_sped_stud >0) %>% 
+ggplot() +
+  geom_sf(aes(fill=mean_sped_stud, geometry = geometry)) +
+  scale_fill_continuous_sequential(palette = "Heat") + 
+  labs(fill = "County Level SpEd Spending Per Student") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title.position = "plot",
+        legend.position = "bottom",
+        legend.key.size = unit(1, 'cm'),
+        legend.key.height = unit(.5,"cm"),
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6))
+
+
+ian_old2 <- county_map %>% 
+  filter(mean_sped_stud >0) %>% 
+ggplot() +
+  geom_sf(aes(fill=mean_sped_stud, geometry = geometry), 
+          lwd = 0) +
+  scale_fill_continuous_sequential(palette = "Heat", 
+                                   labels = scales::label_dollar( scale = 1/1000,suffix = "k"))+ 
+  labs(fill = "County Level SpEd Spending Per Student") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title.position = "plot",
+        legend.position = "bottom",
+        legend.key.size = unit(1, 'cm'),
+        legend.key.height = unit(.5,"cm"),
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6))
+
+
+# maybe just oregon
+ian_old3 <- county_map %>% 
+  filter(state_name =="Oregon") %>% 
+  ggplot()+
+    geom_sf(aes(fill=mean_sped_stud, geometry = geometry)) +
+  scale_fill_continuous_sequential(palette = "Heat") + 
+  labs(title = "Mean Special Ed. Spending per Student", 
+       fill = "") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title.position = "plot",
+        legend.position = "bottom",
+        legend.key.size = unit(1, 'cm'),
+        legend.key.height = unit(.5,"cm"),
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6))
+
+
+ian_old4 <- county_map %>% 
+  filter(state_name =="Oregon") %>% 
+  ggplot()+
+    geom_sf(aes(fill=tot_idea, geometry = geometry)) +
+  scale_fill_continuous_sequential(palette = "Heat") + 
+  labs(title = "Total Sped Students", 
+       fill = "") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title.position = "plot",
+        legend.position = "bottom",
+        legend.key.size = unit(1, 'cm'),
+        legend.key.height = unit(.5,"cm"),
+        axis.text.y = element_text(size = 6),
+        axis.text.x = element_text(size = 6))
+
+
+
+
+```
+
+```{r, include = FALSE}
+# District Level Plots
+ore_district <- district_geo %>% 
+  filter(state_name=="Oregon") %>% 
+  select(idea_count, idea_rev_fed = tot_sped_rev, geometry)  
+
+ian_old5 <- plot(ore_district, border = "light gray", lwd = 0.5)
+
+```
+
+
+
+```{r, include = FALSE}
+library(tidycensus)
+library(cowplot)
+library(pals)
+
+oregon_map <- county_map %>%
+  filter(state_name == "Oregon")
+
+oregon <- county_sums %>%
+  filter(state_name == "Oregon")
+
+or_geo <- get_acs(geography = "county",
+                  state = "OR",
+                  year = 2019,
+                  geometry = TRUE,
+                  output = "wide",
+                 variables= c( med_income = "B06011_001",
+                  ed_attain = "B15003_001")) %>%
+  mutate(County = gsub(", Oregon", "", NAME))
+
+
+
+ mean_sped_quantiles <- quantile(oregon$mean_sped_stud,
+                                 probs = seq(0, 1, length.out = 4), na.rm = TRUE )
+
+ income_quantiles <- quantile(or_geo$med_incomeE,
+                                 probs = seq(0, 1, length.out = 4), na.rm = TRUE )
+
+
+ oregon_quant <- left_join(or_geo, oregon) %>%
+   mutate(income_cat = cut(med_incomeE, income_quantiles),
+          mean_sped_stud_cat = cut(mean_sped_stud, mean_sped_quantiles)) %>%
+    mutate(mean_sped_stud_cat = fct_explicit_na(mean_sped_stud_cat, na_level = "(1.09e+03,1.27e+03]"),
+           income_cat = fct_explicit_na(income_cat, na_level = "(2.15e+04,2.58e+04]"
+))
+
+ pal <- oregon_quant %>%
+   st_drop_geometry(.) %>%
+   count(income_cat, mean_sped_stud_cat) %>%
+   arrange(income_cat, mean_sped_stud_cat) %>%
+   drop_na(income_cat, mean_sped_stud_cat) %>%
+   mutate(pal = stevens.greenblue())
+
+
+map <- left_join(oregon_quant, pal) %>%
+  ggplot() +
+  geom_sf(aes(fill = pal, color = pal))+
+  guides(fill = "none", color = "none")+
+  scale_fill_identity()+
+  scale_color_identity()+
+   theme_void()+
+  labs(title = "Southeastern Oregon Needs Increased SpEd Resources") +
+  theme(plot.title = element_text(size = 20, face = "bold", hjust = .2))
+
+legend <-
+  ggplot(pal, aes(mean_sped_stud_cat, income_cat))+
+  geom_tile(aes(fill = pal))+
+  scale_fill_identity()+
+  coord_fixed() +
+  labs(x = expression("SpEd Spending per Student" %->% ""),
+       y = expression("Median Income" %->% ""))+
+    theme(axis.text = element_blank(),
+        axis.title = element_text(size = 8))
+
+
+
+
+
+```
+
+Ian 
+=====================================  
+
+Row {.tabset data-height=600}
+-------------------------------------
+
+Visualization 1
+
+
+### Old Nationwide
+
+
+```{r fig.width=my_width, fig.height=my_height}
+ian_old1
+
+ian_old2
+```
+<br>
+Initially, I wanted to provide more granular data about SpEd populations and spending. However, it appeared that there was a wide variation of state reporting quality.
+
+### Old Oregon
+```{r fig.width=my_width, fig.height=my_height}
+ian_old3
+
+ian_old4
+
+```
+<br>
+I decided to hone in on Oregon and created a series of plots that didn't quite capture what I was hoping to.
+
+### Final
+
+```{r  fig_height = 8, fig_width = 8}
+
+
+
+ggdraw() +
+  draw_plot(map , 0.1, 0, 1, 1) +
+  draw_plot(legend, -0.05, 0, 0.3, 0.3)
+```
+<br>
+Despite the straightforward title, there's a lot of interesting information to unpack here. While the southeastern portion of Oregon is the least well funded, the counties where SpEd funding quantiles are below the median income and vice versa.
+
+
+Futing 
+=====================================  
+
+Row {.tabset data-height=`r data_height`}
+-------------------------------------
+
+Visualization 1
+
+### Old
+
+```{r fig.width=my_width, fig.height=my_height}
+FZPlot1_old
+
+FZPlot2_old
+
+FZPlot3_old
+```
+<br>
+Initially, I wanted to display the disability rates, the sped revenue per student, and difference in CWD/Non-CWD grad rates on maps. Pretty straightforward already, but I need some basic information from this.
+
+### New
+
+```{r fig.width=my_width, fig.height=my_height}
+FZPlot1
+
+FZPlot2
+
+FZPlot3
+```
+<br>
+I decided to use interactive maps to visualize those data, so I can at least also get the name of each state and the exact value in this heatmap for each state.
+
+
+
+Dillon 
+=====================================  
+
+Row {.tabset data-height=`r data_height`}
+-------------------------------------
+
+Visualization 1
+
+### Old
+
+```{r fig.width=my_width, fig.height=my_height}
+DWOldPlot1
+```
+<br>
+I wanted to do something interesting. I had another plot that had a more interesting analysis (logistic regression of likelihood of graduation >50% of CWD cohort vs SPED $/student), but interpretation tripped me up whenever I'd come back to it.
+
+### New
+
+```{r fig.width=my_width, fig.height=my_height}
+DWPlot4
+```
+<br>
+The colors are a bit cooler looking, I messed with the alpha, and added formulae. So now it reads a bit better. The first equation is suitable for students ages 12 and up, but I don't like kids, so they're not my target audience. I had to download a package to get the formulae added, but I think they're a nice touch.
+
+
+Row {.tabset data-height=`r data_height`}
+-------------------------------------
+
+Visualization 2
+
+### Old
+
+```{r fig.width=my_width, fig.height=my_height}
+DWOldPlot2
+```
+<br>
+Ok, so pretty simple graph. Pretty much intended for anyone who can read. Overly busy, conveys nothing through color, kind of confusing orientation.
+
+
+### New
+
+```{r fig.width=my_width, fig.height=my_height}
+DWPlot9
+```
+<br>
+Adding blood red is still pretty macabre, so I kept the goth aesthetic. Also, I reduced the number of states to the 10 most populous. Still not in love with this chart. Removing the coord flip was on the right track, but now not in love with the y-axis.
+
+
+Row {.tabset data-height=`r data_height`}
+-------------------------------------
+
+Visualization 3
+
+### Old
+
+```{r fig.width=my_width, fig.height=my_height}
+DWOldPlot3
+```
+<br>
+I wanted to convey both raw numbers of CWD students and the proportion of CWD. I actually think this was a fine start, I just ended up wanting to go a different route.
+
+### New
+
+```{r fig.width=my_width, fig.height=my_height}
+DWPlot10
+```
+<br>
+So instead I thought about visualizing the raw numbers of CWD who did and didn't graduate. I took the 10 most populous states and sorted by proportion graduating. Also, I changed the color to look like a stoplight, for obvious reasons. The hits just keep coming. This took forever because I had to mess with the scales a bunch and selectively make some values negative.
+
+
