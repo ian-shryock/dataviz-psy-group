@@ -450,7 +450,7 @@ DWPlot9
 DWPlot10
 ```
 
-```{r, include = FALSE}
+```{r FutingOldPlots, include = FALSE}
 library(albersusa)
 library(colorspace)
 us <- usa_sf()
@@ -460,7 +460,7 @@ stateLevel_subset <- stateLevel %>%
 
 stateLevel_geo <- inner_join(us, stateLevel_subset) 
 
-ggplot(stateLevel_geo) +
+FZPlot1_old <- ggplot(stateLevel_geo) +
   geom_sf(aes(fill=CWD_RATE)) +
   scale_fill_continuous_sequential(palette = "Heat") + 
   labs(fill = "Percent of Students with Disabilities",
@@ -473,7 +473,7 @@ ggplot(stateLevel_geo) +
         axis.text.y = element_text(size = 6),
         axis.text.x = element_text(size = 6))
 
-ggplot(stateLevel_geo) +
+FZPlot2_old <- ggplot(stateLevel_geo) +
   geom_sf(aes(fill=SpedPerStudent)) +
   scale_fill_continuous_sequential(palette = "Heat") + 
   labs(fill = "Avg Special Ed Revenue per Student",
@@ -486,7 +486,7 @@ ggplot(stateLevel_geo) +
         axis.text.y = element_text(size = 6),
         axis.text.x = element_text(size = 6))
 
-ggplot(stateLevel_geo) +
+FZPlot3_old <-ggplot(stateLevel_geo) +
   geom_sf(aes(fill=CWD_GRAD_RATE-NON_CWD_GRAD_RATE)) +
   scale_fill_continuous_sequential(palette = "Heat") + 
   labs(fill = "Differences in Grad Rates\n(Disability - No Disabilties)",
@@ -498,6 +498,148 @@ ggplot(stateLevel_geo) +
         legend.key.height = unit(.5,"cm"),
         axis.text.y = element_text(size = 6),
         axis.text.x = element_text(size = 6))
+
+```
+
+```{r FutingDraftPlots, include = FALSE}
+library(plotly)
+library(maps)
+
+states_map <- map_data("state")
+
+stateLevel_subset <- stateLevel %>%
+  select("state"="STNAME", CWD_RATE, SpedPerStudent,
+         CWD_GRAD_RATE, NON_CWD_GRAD_RATE) %>%
+  mutate(state = tolower(state),
+         DIFF_IN_RATE = CWD_GRAD_RATE - NON_CWD_GRAD_RATE)  %>%
+  select(-c(CWD_GRAD_RATE, NON_CWD_GRAD_RATE))
+
+ggplotly(ggplot(stateLevel_subset, aes(map_id = state)) +
+  geom_map(aes(fill = CWD_RATE), map = states_map) +
+  expand_limits(x = states_map$long, y = states_map$lat) +
+  scale_fill_continuous_sequential(palette = "Heat") + 
+  labs(fill = "Percent of Students with Disabilities",
+       title = "Students with Disability Rates") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(hjust = .5, face = "bold"),
+        legend.position = "bottom",
+        legend.key.size = unit(.8, 'cm'),
+        legend.key.height = unit(.5,"cm"))) 
+
+full_set <- expand.grid(name = unique(us$name))
+
+stateLevel_subset <- stateLevel %>%
+  select("name"="STNAME", CWD_RATE, SpedPerStudent,
+         CWD_GRAD_RATE, NON_CWD_GRAD_RATE) %>%
+  mutate(DIFF_IN_RATE = CWD_GRAD_RATE - NON_CWD_GRAD_RATE)  %>%
+  select(-c(CWD_GRAD_RATE, NON_CWD_GRAD_RATE)) %>%
+  rename(Rate = CWD_RATE, Revenue = SpedPerStudent, Difference = DIFF_IN_RATE)
+
+stateLevel_subset <- left_join(full_set, stateLevel_subset)
+
+stateLevel_geo <- left_join(us, stateLevel_subset) 
+
+FZPlot1_test <- ggplot(stateLevel_geo) +
+  geom_sf(aes(fill=Rate)) +
+  scale_fill_continuous_sequential(palette = "Heat",
+                                   na.value = 'grey80') + 
+  labs(fill = "",
+       title = "Students with Disability Rates") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(hjust = .5, face = "bold"),
+        legend.position = "bottom",
+        legend.key.size = unit(.5, 'cm'),
+        legend.key.height = unit(.3,"cm"),
+        axis.text.y = element_blank(),
+        axis.text.x = element_blank())
+
+FZPlot2_test <- ggplot(stateLevel_geo) +
+  geom_sf(aes(fill=Revenue)) +
+  scale_fill_continuous_sequential(palette = "Heat",
+                                   na.value = 'grey80') + 
+  labs(fill = "",
+       title = "SpEd Revenue per Student") +
+  theme_minimal(base_size = 12) +
+  theme(plot.title = element_text(hjust = .5, face = "bold"),
+        legend.position = "bottom",
+        legend.key.size = unit(.5, 'cm'),
+        legend.key.height = unit(.3,"cm"),
+        axis.text.y = element_blank(),
+        axis.text.x = element_blank())
+
+FZPlot3_test <- ggplot(stateLevel_geo) +
+  geom_sf(aes(fill=abs(Difference))) +
+  scale_fill_continuous_sequential(palette = "Heat",
+                                   na.value = 'grey80') + 
+  labs(fill = "",
+       title = "Differences in Grad Rates\nabs(Disability - No Disabilties)") +
+  theme_minimal(base_size = 12) +
+  theme(plot.subtitle = element_text(hjust = .5, face = "bold"),
+        legend.position = "bottom",
+        legend.key.size = unit(.5, 'cm'),
+        legend.key.height = unit(.3,"cm"),
+        axis.text.y = element_blank(),
+        axis.text.x = element_blank())
+
+ggplotly(FZPlot1_test)
+```
+
+```{r FZNewPlots, include=FALSE}
+df_for_geo <- read.csv("https://raw.githubusercontent.com/plotly/datasets/master/2011_us_ag_exports.csv")
+
+l <- list(color = toRGB("white"), width = 2)
+g <- list(
+  scope = 'usa',
+  projection = list(type = 'albers usa'),
+  showlakes = TRUE,
+  lakecolor = toRGB('white')
+)
+
+stateLevel_subset$state <- stateLevel_subset$name
+df_subset <- df_for_geo %>%
+  select(state, code)
+stateLevel_geo <- left_join(df_subset, stateLevel_subset)
+
+FZPlot1 <- plot_geo(stateLevel_geo, locationmode = 'USA-states') %>% 
+  add_trace(
+    z = ~Rate, text = ~state, locations = ~code, 
+    color = ~Rate, colors = 'Purples'
+  ) %>% 
+  colorbar(title = "Percent of Students with Disabilities",
+           y = 0.75) %>% 
+  layout(
+    title = list(text = '<b> Students with Disability Rates <b>'),
+    y = 0.5,
+    geo = g
+  )
+
+FZPlot2 <- plot_geo(stateLevel_geo, locationmode = 'USA-states') %>% 
+  add_trace(
+    z = ~Revenue, text = ~state, locations = ~code, 
+    color = ~Revenue, colors = 'Purples'
+  ) %>% 
+  colorbar(title = "Avg Special Ed Revenue per Student",
+           orientation = "h",
+           y = 0.75) %>% 
+  layout(
+    title = list(text = '<b> SpEd Revenue per Student <b>'),
+    y = 0.5,
+    geo = g
+  )
+
+FZPlot3 <- plot_geo(stateLevel_geo, locationmode = 'USA-states') %>% 
+  add_trace(
+    z = ~(-Difference), text = ~state, locations = ~code, 
+    color = ~(-Difference), colors = 'Purples'
+  ) %>% 
+  colorbar(title = "Differences in Grad Rates\n(No Disabilties - Disabilities)",
+           orientation = "h",
+           y = 0.75) %>% 
+  layout(
+    title = list(text = '<b> Differences in CWD/Non-CWD Grad Rates <b>'),
+    y = 0.5,
+    geo = g
+  )
 
 ```
 
@@ -862,7 +1004,7 @@ Visualization 1
 ### Old
 
 ```{r fig.width=my_width, fig.height=my_height}
-newPlot
+FZPlot1_old
 ```
 <br>
 "DESCRIPTION HERE
@@ -871,7 +1013,7 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus.
 ### New
 
 ```{r fig.width=my_width, fig.height=my_height}
-newPlot
+FZPlot1
 ```
 <br>
 "DESCRIPTION HERE
@@ -886,7 +1028,7 @@ Visualization 2
 ### Old
 
 ```{r fig.width=my_width, fig.height=my_height}
-newPlot
+FZPlot2_old
 ```
 <br>
 "DESCRIPTION HERE
@@ -896,7 +1038,7 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus.
 ### New
 
 ```{r fig.width=my_width, fig.height=my_height}
-newPlot
+FZPlot2
 ```
 <br>
 "DESCRIPTION HERE
@@ -911,7 +1053,7 @@ Visualization 3
 ### Old
 
 ```{r fig.width=my_width, fig.height=my_height}
-newPlot
+FZPlot3_old
 ```
 <br>
 "DESCRIPTION HERE
@@ -920,7 +1062,7 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus.
 ### New
 
 ```{r fig.width=my_width, fig.height=my_height}
-newPlot
+FZPlot3
 ```
 <br>
 "DESCRIPTION HERE
