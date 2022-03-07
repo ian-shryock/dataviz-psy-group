@@ -6,15 +6,15 @@ output: html_document
 ---
 
 ```{r InitialSetup}
-#remotes::install_github("datalorax/edld652")
-library(edld652)
-
-
-#install.packages("usethis")
-#usethis::edit_r_environ()
-#list_datasets()
-
-#unlink(file.path("~",".Renviron"))
+# remotes::install_github("datalorax/edld652")
+# library(edld652)
+# 
+# 
+# install.packages("usethis")
+# usethis::edit_r_environ()
+# list_datasets()
+# 
+# unlink(file.path("~",".Renviron"))
 ```
 
 
@@ -23,6 +23,7 @@ library(tidyverse)
 library(stringr)
 library(here)
 library(sf)
+library(ggpubr)
 datasets <- data.frame(names = edld652::list_datasets())
 fiscal_names <- datasets %>% filter(str_detect(names, "CCD_fiscal"))
 
@@ -121,81 +122,77 @@ dis_state_sums %>%
 ```
 
 ```{r}
+dis_dat_sub <- dis_dat %>% 
+  select(state_name = STATENAME, LEAID, LEA_NAME, YEAR , IDEA_COUNT) %>% 
+  janitor::clean_names()
+dis_dat_sub$state_name <- str_to_title(dis_dat_sub$state_name)
+fiscal_temp <- left_join(raw_fisc_2017, acgr_lea, by = "LEAID") %>% 
+   select(leaid = LEAID, state_sped_rev = C05, fed_sped_rev = C15, STNAME, 
+         LEAID, ALL_COHORT, CWD_COHORT, ALL_RATE, CWD_RATE)
+  
+fiscal_disability <- left_join(fiscal_temp, dis_dat_sub) %>% 
+  rowwise() %>% 
+  mutate(tot_sped_rev = sum(c_across(state_sped_rev:fed_sped_rev), na.rm = TRUE), 
+         SpedPerStudent = tot_sped_rev/idea_count)
+
+```
+
+```{r}
+recode_rates <- function(rawRate){
+  numRate <- recode(rawRate, "1"= 1, "2"= 2, "3"= 3, "4"= 4, "5"= 5, "6"= 6, "7"= 7, "8"= 8, "9"= 9, "10"= 10, "11"= 11, "12"= 12, "13"= 13, "14"= 14, "15"= 15, "16"= 16, "17"= 17, "18"= 18, "19"= 19, "20"= 20, "21"= 21, "22"= 22, "23"= 23, "24"= 24, "25"= 25, "26"= 26, "27"= 27, "28"= 28, "29"= 29, "30"= 30, "31"= 31, "32"= 32, "33"= 33, "34"= 34, "35"= 35, "36"= 36, "37"= 37, "38"= 38, "39"= 39, "40"= 40, "41"= 41, "42"= 42, "43"= 43, "44"= 44, "45"= 45, "46"= 46, "47"= 47, "48"= 48, "49"= 49, "50"= 50, "51"= 51, "52"= 52, "53"= 53, "54"= 54, "55"= 55, "56"= 56, "57"= 57, "58"= 58, "59"= 59, "60"= 60, "61"= 61, "62"= 62, "63"= 63, "64"= 64, "65"= 65, "66"= 66, "67"= 67, "68"= 68, "69"= 69, "70"= 70, "71"= 71, "72"= 72, "73"= 73, "74"= 74, "75"= 75, "76"= 76, "77"= 77, "78"= 78, "79"= 79, "80"= 80, "81"= 81, "82"= 82, "83"= 83, "84"= 84, "85"= 85, "86"= 86, "87"= 87, "88"= 88, "89"= 89, "90"= 90, "91"= 91, "92"= 92, "93"= 93, "94"= 94, "95"= 95, "96"= 96, "97"= 97, "98"= 98, "99"= 99, "100"= 100,                                    "70-79" = 74.5,
+                                        "40-49"= 44.5,
+                                        "60-69"= 64.5,
+                                        "60-79"= 69.5,
+                                        "50-59"= 54.5,
+                                        "LE5"= 2.5,
+                                        "10-14"= 12,
+                                        "60-64"= 62,
+                                        "21-39"= 30,
+                                        "30-39"= 34.5,
+                                        "55-59"= 57,
+                                        "LE10"= 5,
+                                        "35-39"= 37,
+                                        "40-44"= 42,
+                                        "40-59"= 49.5,
+                                        "50-54"= 52,
+                                        "20-24"= 22,
+                                        "15-19"= 17,
+                                        "6-9"= 7.5,
+                                        "11-19"= 15,
+                                        "80-89"= 84.5,
+                                        "70-74"= 72,
+                                        "65-69"= 67,
+                                        "75-79"= 77,
+                                        "80-84"= 82,
+                                        "85-89"= 87,
+                                        "45-49"= 47,
+                                        "90-94"= 92,
+                                        "25-29"= 27,
+                                        "GE90"= 95,
+                                        "GE95"= 97.5,
+                                        "20-29"= 24.5,
+                                        "30-34"= 32,
+                                        "GE50"= 200,
+                                        "LT50" = -200,
+                                        .default = 9999)
+  return(numRate)
+}
+
+```
+
+```{r DillonOldPlots}
 #SpEd spending per student
 fiscal_acgr1 <- inner_join(raw_fisc_2017, acgr_lea, by = "LEAID") %>% mutate(SpedPerStudent=C05+C15/CWD_COHORT) %>%  mutate(PerCWD=CWD_COHORT/ALL_COHORT) %>% select(C05, C15, SpedPerStudent, STNAME, CWD_RATE, CWD_COHORT, LEAID, ALL_COHORT, ALL_RATE, PerCWD) %>% filter(LEAID!="1500030")
 
-fiscal_acgr1 <- fiscal_acgr1 %>% mutate(numCWDGradRate=recode(CWD_RATE,
-                                        "1"= 1, "2"= 2, "3"= 3, "4"= 4, "5"= 5, "6"= 6, "7"= 7, "8"= 8, "9"= 9, "10"= 10, "11"= 11, "12"= 12, "13"= 13, "14"= 14, "15"= 15, "16"= 16, "17"= 17, "18"= 18, "19"= 19, "20"= 20, "21"= 21, "22"= 22, "23"= 23, "24"= 24, "25"= 25, "26"= 26, "27"= 27, "28"= 28, "29"= 29, "30"= 30, "31"= 31, "32"= 32, "33"= 33, "34"= 34, "35"= 35, "36"= 36, "37"= 37, "38"= 38, "39"= 39, "40"= 40, "41"= 41, "42"= 42, "43"= 43, "44"= 44, "45"= 45, "46"= 46, "47"= 47, "48"= 48, "49"= 49, "50"= 50, "51"= 51, "52"= 52, "53"= 53, "54"= 54, "55"= 55, "56"= 56, "57"= 57, "58"= 58, "59"= 59, "60"= 60, "61"= 61, "62"= 62, "63"= 63, "64"= 64, "65"= 65, "66"= 66, "67"= 67, "68"= 68, "69"= 69, "70"= 70, "71"= 71, "72"= 72, "73"= 73, "74"= 74, "75"= 75, "76"= 76, "77"= 77, "78"= 78, "79"= 79, "80"= 80, "81"= 81, "82"= 82, "83"= 83, "84"= 84, "85"= 85, "86"= 86, "87"= 87, "88"= 88, "89"= 89, "90"= 90, "91"= 91, "92"= 92, "93"= 93, "94"= 94, "95"= 95, "96"= 96, "97"= 97, "98"= 98, "99"= 99, "100"= 100,                                    "70-79" = 74.5,
-                                        "40-49"= 44.5,
-                                        "60-69"= 64.5,
-                                        "60-79"= 69.5,
-                                        "50-59"= 54.5,
-                                        "LE5"= 2.5,
-                                        "10-14"= 12,
-                                        "60-64"= 62,
-                                        "21-39"= 30,
-                                        "30-39"= 34.5,
-                                        "55-59"= 57,
-                                        "LE10"= 5,
-                                        "35-39"= 37,
-                                        "40-44"= 42,
-                                        "40-59"= 49.5,
-                                        "50-54"= 52,
-                                        "20-24"= 22,
-                                        "15-19"= 17,
-                                        "6-9"= 7.5,
-                                        "11-19"= 15,
-                                        "80-89"= 84.5,
-                                        "70-74"= 72,
-                                        "65-69"= 67,
-                                        "75-79"= 77,
-                                        "80-84"= 82,
-                                        "85-89"= 87,
-                                        "45-49"= 47,
-                                        "90-94"= 92,
-                                        "25-29"= 27,
-                                        "GE90"= 95,
-                                        "GE95"= 97.5,
-                                        "20-29"= 24.5,
-                                        "30-34"= 32))
+fiscal_acgr1 <- fiscal_acgr1 %>% mutate(numCWDGradRate=recode_rates(CWD_RATE))
 
-fiscal_acgr1 <- fiscal_acgr1 %>% mutate(numTotalGradRate=recode(ALL_RATE,
-                                                                 "1"= 1, "2"= 2, "3"= 3, "4"= 4, "5"= 5, "6"= 6, "7"= 7, "8"= 8, "9"= 9, "10"= 10, "11"= 11, "12"= 12, "13"= 13, "14"= 14, "15"= 15, "16"= 16, "17"= 17, "18"= 18, "19"= 19, "20"= 20, "21"= 21, "22"= 22, "23"= 23, "24"= 24, "25"= 25, "26"= 26, "27"= 27, "28"= 28, "29"= 29, "30"= 30, "31"= 31, "32"= 32, "33"= 33, "34"= 34, "35"= 35, "36"= 36, "37"= 37, "38"= 38, "39"= 39, "40"= 40, "41"= 41, "42"= 42, "43"= 43, "44"= 44, "45"= 45, "46"= 46, "47"= 47, "48"= 48, "49"= 49, "50"= 50, "51"= 51, "52"= 52, "53"= 53, "54"= 54, "55"= 55, "56"= 56, "57"= 57, "58"= 58, "59"= 59, "60"= 60, "61"= 61, "62"= 62, "63"= 63, "64"= 64, "65"= 65, "66"= 66, "67"= 67, "68"= 68, "69"= 69, "70"= 70, "71"= 71, "72"= 72, "73"= 73, "74"= 74, "75"= 75, "76"= 76, "77"= 77, "78"= 78, "79"= 79, "80"= 80, "81"= 81, "82"= 82, "83"= 83, "84"= 84, "85"= 85, "86"= 86, "87"= 87, "88"= 88, "89"= 89, "90"= 90, "91"= 91, "92"= 92, "93"= 93, "94"= 94, "95"= 95, "96"= 96, "97"= 97, "98"= 98, "99"= 99, "100"= 100,                       
-                                        "70-79" = 74.5,
-                                        "40-49"= 44.5,
-                                        "60-69"= 64.5,
-                                        "60-79"= 69.5,
-                                        "50-59"= 54.5,
-                                        "LE5"= 2.5,
-                                        "10-14"= 12,
-                                        "60-64"= 62,
-                                        "21-39"= 30,
-                                        "30-39"= 34.5,
-                                        "55-59"= 57,
-                                        "LE10"= 5,
-                                        "35-39"= 37,
-                                        "40-44"= 42,
-                                        "40-59"= 49.5,
-                                        "50-54"= 52,
-                                        "20-24"= 22,
-                                        "15-19"= 17,
-                                        "6-9"= 7.5,
-                                        "11-19"= 15,
-                                        "80-89"= 84.5,
-                                        "70-74"= 72,
-                                        "65-69"= 67,
-                                        "75-79"= 77,
-                                        "80-84"= 82,
-                                        "85-89"= 87,
-                                        "45-49"= 47,
-                                        "90-94"= 92,
-                                        "25-29"= 27,
-                                        "GE90"= 95,
-                                        "GE95"= 97.5,
-                                        "20-29"= 24.5,
-                                        "30-34"= 32))
+fiscal_acgr1 <- fiscal_acgr1 %>% mutate(numTotalGradRate=recode_rates(ALL_RATE))
+
+fiscal_acgr1 <- fiscal_acgr1%>% filter(numCWDGradRate>=0 & CWD_RATE<=100)
 
 fiscal_acgr1 <- fiscal_acgr1 %>% mutate(GE50 = case_when(numCWDGradRate>50 | numCWDGradRate=="GE50" ~ 1, numCWDGradRate<50 | numCWDGradRate=="LT50"~0))
+
+combined_set <- fiscal_disability %>% filter(year==2017)%>% mutate(numCWDGradRate=recode_rates(CWD_RATE), numTotalGradRate=recode_rates(ALL_RATE)) %>% filter(numCWDGradRate!=9999 & CWD_RATE!=9999)
 
 
 fiscal_acgr1 %>%  filter(abs(scale(SpedPerStudent))<=1.65) %>%ggplot(., aes(x=SpedPerStudent, y=GE50)) + 
@@ -244,9 +241,7 @@ ggplot(., aes(x=SpedPerStudent, y=numCWDGradRate-numTotalGradRate)) +
   theme_minimal()
 
 
-```
 
-```{r}
 stateLevel2 <- stateLevel %>% pivot_longer(., cols=c("nonCWD","CWD_COHORT"), values_to="count")
 
  stateLevel2%>% 
@@ -288,6 +283,138 @@ stateLevel%>%
     x = "State in Order of Disability Rates, Descending", 
     y="Differences in Grad Rates, Disability minus No Disabilties"
   )
+```
+
+```{r DillonNewDataCleaning}
+combined_set <- fiscal_disability %>% filter(year==2017)%>% mutate(numCWDGradRate=recode_rates(CWD_RATE), numTotalGradRate=recode_rates(ALL_RATE)) 
+
+GEPlotSet <- combined_set <- combined_set %>% filter(numCWDGradRate!=9999 & numTotalGradRate!=9999) %>% mutate(CWDGE50 = ifelse(numCWDGradRate>50,1,0))
+
+combined_set <- combined_set %>% filter(numCWDGradRate!=9999 & numTotalGradRate!=9999) %>% mutate(CWDGE50 = ifelse(numCWDGradRate>50,1,0))%>% filter(numCWDGradRate>=0 & numCWDGradRate<=100 & numCWDGradRate>=0 & numCWDGradRate<=100) %>% mutate(rateDiff = numCWDGradRate-numTotalGradRate)
+
+#combined_set2 <- combined_set %>% mutate(rateDiff = numCWDGradRate-numTotalGradRate) %>% filter(SpedPerStudent>=quantile(.$SpedPerStudent, .02, na.rm = TRUE) & SpedPerStudent<=quantile(.$SpedPerStudent, .98, na.rm = TRUE))
+
+
+combined_set <- combined_set %>% mutate(CWD_GRAD_COHORT= numCWDGradRate*CWD_COHORT*.01, NONCWD_GRAD_COHORT= (numTotalGradRate*ALL_COHORT*.01)-(numCWDGradRate*CWD_COHORT*.01))
+
+
+combinedStateLevel <- combined_set %>% group_by(STNAME) %>% summarize(CWD_COHORT=sum(CWD_COHORT, na.rm=TRUE), ALL_COHORT=sum(ALL_COHORT), SpedRev=sum(state_sped_rev+fed_sped_rev, na.rm=TRUE), IdeaCount=sum(idea_count, na.rm=TRUE), NONCWD_GRAD_COHORT=sum(NONCWD_GRAD_COHORT), CWD_GRAD_COHORT=sum(CWD_GRAD_COHORT)) %>% mutate(CWD_RATE=CWD_COHORT/ALL_COHORT) %>% mutate(nonCWD=ALL_COHORT-CWD_COHORT) %>% mutate(SpedPerStudent=SpedRev/IdeaCount, CWD_GRAD_RATE = CWD_GRAD_COHORT/CWD_COHORT, NON_CWD_GRAD_RATE=NONCWD_GRAD_COHORT/(ALL_COHORT-CWD_COHORT))
+
+combinedStateLevel <- combinedStateLevel %>% mutate(CWD_NONGRAD_COHORT = CWD_COHORT*(1-CWD_GRAD_RATE), NONCWD_NONGRAD_COHORT = (ALL_COHORT-CWD_COHORT)*(1-NON_CWD_GRAD_RATE))
+```
+
+
+```{r DillonNewPlots}
+DWPlot1 <-  GEPlotSet %>% filter(SpedPerStudent>=quantile(.$SpedPerStudent, .02, na.rm = TRUE) & SpedPerStudent<=quantile(.$SpedPerStudent, .98, na.rm = TRUE)) %>%ggplot(., aes(x=SpedPerStudent/1000, y=CWDGE50)) + 
+  geom_point(alpha=.5) +
+  stat_smooth(method="glm", se=TRUE, method.args = list(family=binomial)) + 
+  labs(
+    title = "Likelihood of a >50% CWD Cohort Graduation Rate vs Sped Revenue per Student",
+    x = "Sped Revenue per Student (by $1000s)", 
+    y="Likelihood"
+  )+
+  theme_minimal()
+
+DWPlot2 <-  combinedStateLevel %>% filter(STNAME!="Colorado") %>% ggplot(., aes(x=SpedPerStudent, y=reorder(STNAME, SpedPerStudent))) +
+  geom_point(size=2, shape=23)+
+  geom_smooth(method=lm, se=FALSE)+
+  labs(
+    title = "State Avg Sped Revenue per CWD Student",
+    x = "Avg. Sped Revenue", 
+    y="State"
+  )+
+  theme_minimal()
+
+
+DWPlot3 <-  combined_set %>% filter(SpedPerStudent>=quantile(.$SpedPerStudent, .02, na.rm = TRUE) & SpedPerStudent<=quantile(.$SpedPerStudent, .98, na.rm = TRUE)) %>% 
+ggplot(., aes(x=SpedPerStudent, y=numCWDGradRate-numTotalGradRate)) +
+  geom_point(size=2, shape=23)+
+  geom_smooth(method=lm, se=TRUE)+
+  labs(
+    title = "Difference in Graduation Rates of CWD - Non-CWD vs Avg Sped Revenue per CWD Student",
+    x = "Avg. Sped Revenue", 
+    y="Difference in Graduaion Rate, CWD-Non-CWD"
+  )+
+  theme_minimal()
+
+DWPlot4 <-  combined_set %>% filter(SpedPerStudent>=quantile(.$SpedPerStudent, .02, na.rm = TRUE) & SpedPerStudent<=quantile(.$SpedPerStudent, .98, na.rm = TRUE)) %>% 
+ggplot(., aes(x=(SpedPerStudent/1000), y=numCWDGradRate)) +
+  geom_point(size=1.5, shape=23, alpha = .7, color = "cyan3")+
+  geom_smooth(method=lm, se=TRUE, size = 2, color = "black")+
+  stat_regline_equation(label.y = 63, label.x = 13, aes(label = ..eq.label..)) +
+  stat_regline_equation(label.y = 58, label.x = 13, aes(label = ..rr.label..))+
+  labs(
+    title = "Graduation Rates of CWD vs Sped Revenue per CWD Student",
+    x = "Sped Revenue (by $1000)/Child with Disabilities", 
+    y="CWD Grad Rate"
+  )+
+  theme_minimal()
+
+summary(lm(numCWDGradRate~SpedPerStudent, data = combined_set))
+
+combinedStateLevel2 <- combinedStateLevel %>% pivot_longer(., cols=c("nonCWD","CWD_COHORT","CWD_NONGRAD_COHORT", "NONCWD_NONGRAD_COHORT", "CWD_GRAD_COHORT", "NONCWD_GRAD_COHORT"), values_to="count")%>% mutate(count = ifelse(name=="CWD_NONGRAD_COHORT",count*-1,count ))
+
+DWPlot6 <- combinedStateLevel %>% pivot_longer(., cols=c("nonCWD","CWD_COHORT","CWD_NONGRAD_COHORT", "NONCWD_NONGRAD_COHORT", "CWD_GRAD_COHORT", "NONCWD_GRAD_COHORT"), values_to="count")%>% filter(name %in% c("nonCWD","CWD_COHORT")) %>% filter(STNAME %in% c("California","Texas","Florida","New York","Pennsylvania","Illinois","Ohio","Georgia","North Carolina","Michigan")) %>%
+   ggplot(.,aes(x=reorder(STNAME, count), y=count, fill = name))+
+  scale_fill_discrete(name = "Disability Status", labels = c("Students with Disabilities","Students without Disabilities"))+
+  geom_col(position = "stack")+
+  coord_flip() +
+  labs(
+    title = "Students Disability Count by State",
+    x = "State", 
+    y="Students with Disabilities"
+  )
+ 
+DWPlot7 <-  combinedStateLevel%>% 
+   ggplot(.,aes(x=reorder(STNAME,CWD_RATE), y=CWD_RATE))+
+  geom_col(position = "stack")+
+  coord_flip() +
+  labs(
+    title = "Students with Disability Rates by State",
+    x = "State", 
+    y="Percent of Students with Disabilities"
+  )
+
+DWPlot8 <-  combinedStateLevel%>% 
+   ggplot(.,aes(x=reorder(STNAME,CWD_RATE), y=SpedPerStudent))+
+  geom_col(position = "stack")+
+  coord_flip() +
+  labs(
+    title = "SpEd Revenue per Student by State",
+    x = "States in Order of Disability Rates, Descending", 
+    y="Special Ed Revenue per Student"
+  )
+
+DWPlot9 <-  combinedStateLevel%>% filter(STNAME %in% c("California","Texas","Florida","New York","Pennsylvania","Illinois","Ohio","Georgia","North Carolina","Michigan")) %>%
+   ggplot(.,aes(x=reorder(STNAME,CWD_GRAD_RATE-NON_CWD_GRAD_RATE), y=(CWD_GRAD_RATE-NON_CWD_GRAD_RATE)*100))+
+  geom_col(position = "stack")+
+  coord_flip() +
+  labs(
+    title = "Differences in CWD/Non-CWD Grad Rates by State",
+    x = "States", 
+    y="Differences in Graduation % (Disability - No Disabilties)"
+  )
+
+
+DWPlot10 <-  combinedStateLevel %>% pivot_longer(., cols=c("nonCWD","CWD_COHORT","CWD_NONGRAD_COHORT", "NONCWD_NONGRAD_COHORT", "CWD_GRAD_COHORT", "NONCWD_GRAD_COHORT"), values_to="count")%>% filter(name %in% c("CWD_GRAD_COHORT","CWD_NONGRAD_COHORT")) %>% filter(STNAME %in% c("California","Texas","Florida","New York","Pennsylvania","Illinois","Ohio","Georgia","North Carolina","Michigan")) %>% mutate(count = ifelse(name=="CWD_NONGRAD_COHORT",count*-1,count ))%>% 
+   ggplot(.,aes(x=reorder(STNAME, CWD_GRAD_RATE), y=count, fill = name))+
+  geom_bar(stat = "identity")+
+  scale_y_continuous(breaks = seq(-20000, 50000, 10000),
+                     labels = c(seq(20000, 0, -10000), seq(10000, 50000, 10000)))+
+  scale_fill_discrete(name = "Graduation Status", labels = c("Graduated","Didn't Graduate"))+
+  coord_flip() +
+  labs(
+    title = "Students with disabilities graduation numbers by state",
+    x = "States by CWD graduation %, descending", 
+    y="Students with Disabilities"
+  )+
+  theme_minimal()
+
+
+
+DWPlot4
+DWPlot9
+DWPlot10
 ```
 
 ```{r}
