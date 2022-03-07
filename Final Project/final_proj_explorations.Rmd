@@ -263,7 +263,7 @@ fiscal_acgr2 %>% ggplot(., aes(x=StateSpedPerStudent, y=reorder(STNAME, StateSpe
   theme_minimal()
 
 
-fiscal_acgr1 %>% filter(abs(scale(SpedPerStudent))<=1.96) %>% 
+DWOldPlot1 <- fiscal_acgr1 %>% filter(abs(scale(SpedPerStudent))<=1.96) %>% 
 ggplot(., aes(x=SpedPerStudent, y=numCWDGradRate-numTotalGradRate)) +
   geom_point(size=2, shape=23)+
   geom_smooth(method=lm, se=TRUE)+
@@ -273,11 +273,11 @@ ggplot(., aes(x=SpedPerStudent, y=numCWDGradRate-numTotalGradRate)) +
     y="Difference in Graduaion Rate, CWD-Non-CWD"
   )+
   theme_minimal()
-
+DWOldPlot1
 
 stateLevel2 <- stateLevel %>% pivot_longer(., cols=c("nonCWD","CWD_COHORT"), values_to="count")
 
- stateLevel2%>% 
+ DWOldPlot3 <- stateLevel2%>% 
    ggplot(.,aes(x=reorder(STNAME, count), y=count, fill = name))+
   geom_col(position = "stack")+
   coord_flip() +
@@ -307,7 +307,7 @@ stateLevel%>%
     y="Avg Special Ed Revenue per Student"
   )
 
-stateLevel%>% 
+DWOldPlot2 <- stateLevel%>% 
    ggplot(.,aes(x=reorder(STNAME,CWD_GRAD_RATE-NON_CWD_GRAD_RATE), y=CWD_GRAD_RATE-NON_CWD_GRAD_RATE))+
   geom_col(position = "stack")+
   coord_flip() +
@@ -316,6 +316,10 @@ stateLevel%>%
     x = "State in Order of Disability Rates, Descending", 
     y="Differences in Grad Rates, Disability minus No Disabilties"
   )
+
+DWOldPlot1
+DWOldPlot2
+DWOldPlot3
 ```
 
 ```{r DillonNewDataCleaning, include = FALSE, cache=TRUE}
@@ -377,8 +381,8 @@ ggplot(., aes(x=(SpedPerStudent/1000), y=numCWDGradRate)) +
   stat_regline_equation(label.y = 63, label.x = 13, aes(label = ..eq.label..)) +
   stat_regline_equation(label.y = 58, label.x = 13, aes(label = ..rr.label..))+
   labs(
-    title = "Graduation Rates of CWD vs Sped Revenue per CWD Student",
-    x = "Sped Revenue (by $1000)/Child with Disabilities", 
+    title = "CWD Graduation Rates vs Sped Revenue per CWD Student",
+    x = "Sped Revenue (per $1000)/Child with Disabilities", 
     y="CWD Grad Rate"
   )+
   theme_minimal()
@@ -420,10 +424,11 @@ DWPlot8 <-  combinedStateLevel%>%
 
 DWPlot9 <-  combinedStateLevel%>% filter(STNAME %in% c("California","Texas","Florida","New York","Pennsylvania","Illinois","Ohio","Georgia","North Carolina","Michigan")) %>%
    ggplot(.,aes(x=reorder(STNAME,CWD_GRAD_RATE-NON_CWD_GRAD_RATE), y=(CWD_GRAD_RATE-NON_CWD_GRAD_RATE)*100))+
-  geom_col(position = "stack")+
-  coord_flip() +
+  geom_col(position = "stack", fill = "red4")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12)) +
+  #coord_flip() +
   labs(
-    title = "Differences in CWD/Non-CWD Grad Rates by State",
+    title = "CWD minus Non-CWD Graduation Rate",
     x = "States", 
     y="Differences in Graduation % (Disability - No Disabilties)"
   )
@@ -434,12 +439,12 @@ DWPlot10 <-  combinedStateLevel %>% pivot_longer(., cols=c("nonCWD","CWD_COHORT"
   geom_bar(stat = "identity")+
   scale_y_continuous(breaks = seq(-20000, 50000, 10000),
                      labels = c(seq(20000, 0, -10000), seq(10000, 50000, 10000)))+
-  scale_fill_discrete(name = "Graduation Status", labels = c("Graduated","Didn't Graduate"))+
+  scale_fill_manual(name = "Graduation Status", labels = c("Graduated","Didn't Graduate"), values = c("green4","red3"))+
   coord_flip() +
   labs(
-    title = "Students with disabilities graduation numbers by state",
+    title = "CWD students graduation by state",
     x = "States by CWD graduation %, descending", 
-    y="Students with Disabilities"
+    y="Number of CWD Students"
   )+
   theme_minimal()
 
@@ -940,11 +945,10 @@ Visualization 1
 ### Old
 
 ```{r fig.width=my_width, fig.height=my_height}
-
+DWOldPlot1
 ```
 <br>
-"DESCRIPTION HERE
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+I wanted to do something interesting. I had another plot that had a more interesting analysis (logistic regression of likelihood of graduation >50% of CWD cohort vs SPED $/student), but interpretation tripped me up whenever I'd come back to it.
 
 ### New
 
@@ -952,8 +956,7 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus.
 DWPlot4
 ```
 <br>
-"DESCRIPTION HERE
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+The colors are a bit cooler looking, I messed with the alpha, and added formulae. So now it reads a bit better. The first equation is suitable for students ages 12 and up, but I don't like kids, so they're not my target audience. I had to download a package to get the formulae added, but I think they're a nice touch.
 
 
 Row {.tabset data-height=`r data_height`}
@@ -964,11 +967,10 @@ Visualization 2
 ### Old
 
 ```{r fig.width=my_width, fig.height=my_height}
-
+DWOldPlot2
 ```
 <br>
-"DESCRIPTION HERE
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+Ok, so pretty simple graph. Pretty much intended for anyone who can read. Overly busy, conveys nothing through color, kind of confusing orientation.
 
 
 ### New
@@ -977,8 +979,7 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus.
 DWPlot9
 ```
 <br>
-"DESCRIPTION HERE
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+Adding blood red is still pretty macabre, so I kept the goth aesthetic. Also, I reduced the number of states to the 10 most populous. Still not in love with this chart. Removing the coord flip was on the right track, but now not in love with the y-axis.
 
 
 Row {.tabset data-height=`r data_height`}
@@ -989,11 +990,10 @@ Visualization 3
 ### Old
 
 ```{r fig.width=my_width, fig.height=my_height}
-newPlot
+DWOldPlot3
 ```
 <br>
-"DESCRIPTION HERE
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+I wanted to convey both raw numbers of CWD students and the proportion of CWD. I actually think this was a fine start, I just ended up wanting to go a different route.
 
 ### New
 
@@ -1001,7 +1001,6 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus.
 DWPlot10
 ```
 <br>
-"DESCRIPTION HERE
-Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+So instead I thought about visualizing the raw numbers of CWD who did and didn't graduate. I took the 10 most populous states and sorted by proportion graduating. Also, I changed the color to look like a stoplight, for obvious reasons. The hits just keep coming. This took forever because I had to mess with the scales a bunch and selectively make some values negative.
 
 
