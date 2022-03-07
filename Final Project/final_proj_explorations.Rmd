@@ -6,7 +6,7 @@ output:
   flexdashboard::flex_dashboard:
     theme: flatly
     social: menu
-    orientation: columns
+    orientation: rows
     vertical_layout: fill
   html_document:
     df_print: paged
@@ -39,6 +39,8 @@ color:white!important;
 # 
 # unlink(file.path("~",".Renviron"))
 #knitr::opts_chunk$set(cache = TRUE)
+library(edld652)
+set_key("sv=2020-08-04&ss=bfqt&srt=sco&sp=rwdlacupitfx&se=2023-01-01T04:52:19Z&st=2021-12-08T20:52:19Z&spr=https&sig=Nmx6zt%2B1iAXDoI5CIgBRoPlsvOPuLlBPvK5uUsldPnw%3D", overwrite = TRUE)
 ```
 
 
@@ -50,6 +52,14 @@ library(sf)
 library(ggpubr)
 library(flexdashboard)
 library(edld652)
+
+my_width <- 5
+my_height<- 4
+data_height <-  600
+newPlot <- mtcars %>% ggplot(., aes(x=disp, y=hp)) +
+  geom_point(size=2, shape=23)+
+  geom_smooth(method=lm, se=FALSE)
+
 datasets <- data.frame(names = edld652::list_datasets())
 fiscal_names <- datasets %>% filter(str_detect(names, "CCD_fiscal"))
 
@@ -675,13 +685,14 @@ ggplot()+
         axis.text.y = element_text(size = 6),
         axis.text.x = element_text(size = 6))
 
+
+```
+
+````{r, include = FALSE}
 # District Level Plots
-
-```{r, include = FALSE}
-
 ore_district <- district_geo %>% 
   filter(state_name=="Oregon") %>% 
-  select(idea_count, idea_rev_fed = C15, geometry)  
+  select(idea_count, idea_rev_fed = tot_sped_rev, geometry)  
 
 plot(ore_district, border = "light gray", lwd = 0.5)
 
@@ -689,78 +700,308 @@ plot(ore_district, border = "light gray", lwd = 0.5)
 
 
 
-
-# Final Plot
 ```{r}
-library(tidycensus)
-library(cowplot)
-library(pals)
-
-oregon_map <- county_map %>% 
-  filter(state_name == "Oregon")
-
-oregon <- county_sums %>% 
-  filter(state_name == "Oregon")
-
-or_geo <- get_acs(geography = "county", 
-                  state = "OR", 
-                  year = 2019, 
-                  geometry = TRUE, 
-                  output = "wide", 
-                 variables= c( med_income = "B06011_001",
-                  ed_attain = "B15003_001")) %>% 
-  mutate(County = gsub(", Oregon", "", NAME))
-
-
-
- mean_sped_quantiles <- quantile(oregon$mean_sped_stud, 
-                                 probs = seq(0, 1, length.out = 4), na.rm = TRUE )
- 
- income_quantiles <- quantile(or_geo$med_incomeE, 
-                                 probs = seq(0, 1, length.out = 4), na.rm = TRUE )
- 
- 
- oregon_quant <- left_join(or_geo, oregon) %>% 
-   mutate(income_cat = cut(med_incomeE, income_quantiles), 
-          mean_sped_stud_cat = cut(mean_sped_stud, mean_sped_quantiles)) %>% 
-    mutate(mean_sped_stud_cat = fct_explicit_na(mean_sped_stud_cat, na_level = "(1.09e+03,1.27e+03]"), 
-           income_cat = fct_explicit_na(income_cat, na_level = "(2.15e+04,2.58e+04]"
-))   
- 
- pal <- oregon_quant %>% 
-   st_drop_geometry(.) %>% 
-   count(income_cat, mean_sped_stud_cat) %>% 
-   arrange(income_cat, mean_sped_stud_cat) %>% 
-   drop_na(income_cat, mean_sped_stud_cat) %>% 
-   mutate(pal = stevens.greenblue())
-
- 
-map <- left_join(oregon_quant, pal) %>% 
-  ggplot() +
-  geom_sf(aes(fill = pal, color = pal))+
-  guides(fill = "none", color = "none")+
-  scale_fill_identity()+
-  scale_color_identity()+
-   theme_void()+
-  labs(title = "Southeastern Oregon Needs Increased SpEd Resources") +
-  theme(plot.title = element_text(size = 24, face = "bold"))
-
-legend <- 
-  ggplot(pal, aes(mean_sped_stud_cat, income_cat))+
-  geom_tile(aes(fill = pal))+
-  scale_fill_identity()+
-  coord_fixed() +  
-  labs(x = expression("SpEd Spending per Student" %->% ""),
-       y = expression("Median Local Income" %->% ""))+
-    theme(axis.text = element_blank(),
-        axis.title = element_text(size = 12))
- 
-ggdraw() +
-  draw_plot(map , 0.1, 0, 1, 1) +
-  draw_plot(legend, -0.05, 0, 0.3, 0.3)
+# library(tidycensus)
+# library(cowplot)
+# library(pals)
+# 
+# oregon_map <- county_map %>%
+#   filter(state_name == "Oregon")
+# 
+# oregon <- county_sums %>%
+#   filter(state_name == "Oregon")
+# 
+# or_geo <- get_acs(geography = "county",
+#                   state = "OR",
+#                   year = 2019,
+#                   geometry = TRUE,
+#                   output = "wide",
+#                  variables= c( med_income = "B06011_001",
+#                   ed_attain = "B15003_001")) %>%
+#   mutate(County = gsub(", Oregon", "", NAME))
+# 
+# 
+# 
+#  mean_sped_quantiles <- quantile(oregon$mean_sped_stud,
+#                                  probs = seq(0, 1, length.out = 4), na.rm = TRUE )
+# 
+#  income_quantiles <- quantile(or_geo$med_incomeE,
+#                                  probs = seq(0, 1, length.out = 4), na.rm = TRUE )
+# 
+# 
+#  oregon_quant <- left_join(or_geo, oregon) %>%
+#    mutate(income_cat = cut(med_incomeE, income_quantiles),
+#           mean_sped_stud_cat = cut(mean_sped_stud, mean_sped_quantiles)) %>%
+#     mutate(mean_sped_stud_cat = fct_explicit_na(mean_sped_stud_cat, na_level = "(1.09e+03,1.27e+03]"),
+#            income_cat = fct_explicit_na(income_cat, na_level = "(2.15e+04,2.58e+04]"
+# ))
+# 
+#  pal <- oregon_quant %>%
+#    st_drop_geometry(.) %>%
+#    count(income_cat, mean_sped_stud_cat) %>%
+#    arrange(income_cat, mean_sped_stud_cat) %>%
+#    drop_na(income_cat, mean_sped_stud_cat) %>%
+#    mutate(pal = stevens.greenblue())
+# 
+# 
+# map <- left_join(oregon_quant, pal) %>%
+#   ggplot() +
+#   geom_sf(aes(fill = pal, color = pal))+
+#   guides(fill = "none", color = "none")+
+#   scale_fill_identity()+
+#   scale_color_identity()+
+#    theme_void()+
+#   labs(title = "Southeastern Oregon Needs Increased SpEd Resources") +
+#   theme(plot.title = element_text(size = 24, face = "bold"))
+# 
+# legend <-
+#   ggplot(pal, aes(mean_sped_stud_cat, income_cat))+
+#   geom_tile(aes(fill = pal))+
+#   scale_fill_identity()+
+#   coord_fixed() +
+#   labs(x = expression("SpEd Spending per Student" %->% ""),
+#        y = expression("Median Local Income" %->% ""))+
+#     theme(axis.text = element_blank(),
+#         axis.title = element_text(size = 12))
+# 
+# ggdraw() +
+#   draw_plot(map , 0.1, 0, 1, 1) +
+#   draw_plot(legend, -0.05, 0, 0.3, 0.3)
 
 
 
 ```
+
+Ian 
+=====================================  
+
+Row {.tabset data-height=`r data_height`}
+-------------------------------------
+
+Visualization 1
+
+
+### Old
+
+
+```{r fig.width=my_width, fig.height=my_height}
+newPlot
+```
+<br>
+"DESCRIPTION HERE
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+
+
+
+### New
+
+```{r fig.width=my_width, fig.height=my_height}
+newPlot
+```
+<br>
+"DESCRIPTION HERE
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+
+
+Row {.tabset data-height=`r data_height`}
+-------------------------------------
+
+Visualization 2
+
+### Old
+
+```{r fig.width=my_width, fig.height=my_height}
+newPlot
+```
+<br>
+"DESCRIPTION HERE
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+
+
+### New
+
+```{r fig.width=my_width, fig.height=my_height}
+newPlot
+```
+<br>
+"DESCRIPTION HERE
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+
+
+Row {.tabset data-height=`r data_height`}
+-------------------------------------
+
+Visualization 3
+
+### Old
+
+```{r fig.width=my_width, fig.height=my_height}
+newPlot
+```
+<br>
+"DESCRIPTION HERE
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+
+### New
+
+```{r fig.width=my_width, fig.height=my_height}
+newPlot
+```
+<br>
+"DESCRIPTION HERE
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+
+Futing 
+=====================================  
+
+Row {.tabset data-height=`r data_height`}
+-------------------------------------
+
+Visualization 1
+
+### Old
+
+```{r fig.width=my_width, fig.height=my_height}
+newPlot
+```
+<br>
+"DESCRIPTION HERE
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+
+### New
+
+```{r fig.width=my_width, fig.height=my_height}
+newPlot
+```
+<br>
+"DESCRIPTION HERE
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+
+
+Row {.tabset data-height=`r data_height`}
+-------------------------------------
+
+Visualization 2
+
+### Old
+
+```{r fig.width=my_width, fig.height=my_height}
+newPlot
+```
+<br>
+"DESCRIPTION HERE
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+
+
+### New
+
+```{r fig.width=my_width, fig.height=my_height}
+newPlot
+```
+<br>
+"DESCRIPTION HERE
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+
+
+Row {.tabset data-height=`r data_height`}
+-------------------------------------
+
+Visualization 3
+
+### Old
+
+```{r fig.width=my_width, fig.height=my_height}
+newPlot
+```
+<br>
+"DESCRIPTION HERE
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+
+### New
+
+```{r fig.width=my_width, fig.height=my_height}
+newPlot
+```
+<br>
+"DESCRIPTION HERE
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+
+
+
+
+Dillon 
+=====================================  
+
+Row {.tabset data-height=`r data_height`}
+-------------------------------------
+
+Visualization 1
+
+### Old
+
+```{r fig.width=my_width, fig.height=my_height}
+
+```
+<br>
+"DESCRIPTION HERE
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+
+### New
+
+```{r fig.width=my_width, fig.height=my_height}
+DWPlot4
+```
+<br>
+"DESCRIPTION HERE
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+
+
+Row {.tabset data-height=`r data_height`}
+-------------------------------------
+
+Visualization 2
+
+### Old
+
+```{r fig.width=my_width, fig.height=my_height}
+
+```
+<br>
+"DESCRIPTION HERE
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+
+
+### New
+
+```{r fig.width=my_width, fig.height=my_height}
+DWPlot9
+```
+<br>
+"DESCRIPTION HERE
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+
+
+Row {.tabset data-height=`r data_height`}
+-------------------------------------
+
+Visualization 3
+
+### Old
+
+```{r fig.width=my_width, fig.height=my_height}
+newPlot
+```
+<br>
+"DESCRIPTION HERE
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
+
+### New
+
+```{r fig.width=my_width, fig.height=my_height}
+DWPlot10
+```
+<br>
+"DESCRIPTION HERE
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer nec eros lacus. Vivamus sed leo id mauris commodo tristique nec id justo. Maecenas ut tortor suscipit, venenatis lacus non, laoreet odio. Quisque ultrices, metus id iaculis pretium, nisi lacus ornare felis, non lacinia nunc leo eget nibh. Curabitur quis feugiat sapien. Morbi maximus neque sed porta dignissim. Donec iaculis placerat diam, eget fermentum velit posuere a. Vestibulum at egestas magna. Nam dignissim pulvinar velit non vulputate. Aenean eu nisl vel est ullamcorper pulvinar non sit amet turpis. Quisque finibus augue at turpis pellentesque, sit amet tempor nibh posuere."
 
 
