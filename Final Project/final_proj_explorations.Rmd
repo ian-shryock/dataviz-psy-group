@@ -184,15 +184,11 @@ recode_rates <- function(rawRate){
 #SpEd spending per student
 fiscal_acgr1 <- inner_join(raw_fisc_2017, acgr_lea, by = "LEAID") %>% mutate(SpedPerStudent=C05+C15/CWD_COHORT) %>%  mutate(PerCWD=CWD_COHORT/ALL_COHORT) %>% select(C05, C15, SpedPerStudent, STNAME, CWD_RATE, CWD_COHORT, LEAID, ALL_COHORT, ALL_RATE, PerCWD) %>% filter(LEAID!="1500030")
 
-fiscal_acgr1 <- fiscal_acgr1 %>% mutate(numCWDGradRate=recode_rates(CWD_RATE))
+fiscal_acgr1 <- fiscal_acgr1 %>% mutate(numCWDGradRate=recode_rates(CWD_RATE)) %>% filter(CWD_RATE<999)
 
-fiscal_acgr1 <- fiscal_acgr1 %>% mutate(numTotalGradRate=recode_rates(ALL_RATE))
-
-fiscal_acgr1 <- fiscal_acgr1%>% filter(numCWDGradRate>=0 & CWD_RATE<=100)
+fiscal_acgr1 <- fiscal_acgr1 %>% mutate(numTotalGradRate=recode_rates(ALL_RATE)) %>% filter(ALL_RATE<999)
 
 fiscal_acgr1 <- fiscal_acgr1 %>% mutate(GE50 = case_when(numCWDGradRate>50 | numCWDGradRate=="GE50" ~ 1, numCWDGradRate<50 | numCWDGradRate=="LT50"~0))
-
-combined_set <- fiscal_disability %>% filter(year==2017)%>% mutate(numCWDGradRate=recode_rates(CWD_RATE), numTotalGradRate=recode_rates(ALL_RATE)) %>% filter(numCWDGradRate!=9999 & CWD_RATE!=9999)
 
 
 fiscal_acgr1 %>%  filter(abs(scale(SpedPerStudent))<=1.65) %>%ggplot(., aes(x=SpedPerStudent, y=GE50)) + 
@@ -239,7 +235,6 @@ ggplot(., aes(x=SpedPerStudent, y=numCWDGradRate-numTotalGradRate)) +
     y="Difference in Graduaion Rate, CWD-Non-CWD"
   )+
   theme_minimal()
-
 
 
 stateLevel2 <- stateLevel %>% pivot_longer(., cols=c("nonCWD","CWD_COHORT"), values_to="count")
